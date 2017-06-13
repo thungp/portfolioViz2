@@ -1,0 +1,113 @@
+<htmL>
+
+<head>
+	<meta charset="UTF-8">
+	<title>Circle Aggrevation</title>
+	<script type="text/javascript" src="libraries/d3.js"></script>
+	<script src="libraries/Vec2.js"></script>
+	<script src="libraries/Ball.js"></script>
+
+	<!-- removes any default padding and style -->
+	<style>
+		body {
+			padding: 0;
+			margin: 0;
+		}
+	</style>
+</head>
+
+<body>
+	<script>
+		var w = 640,
+			h = 800,
+			count = 50,
+			balls = [];
+		var color = d3.scaleOrdinal(d3.schemecategory10);
+		var fps, fpsInterval, startTime, now, then, elapsed;
+		var friction = .875,
+			damping = .786;
+		for (var i = 0; i < count; i++) {
+			balls.push(new Ball(new Vec2(w / 2, Math.random() * 300),
+				new Vec2(-2 + Math.random() * 4, -0 + Math.random() * 2),
+				Math.random() * 10,
+				Math.random() * 10,
+				i));
+		}
+
+		var svg = d3.select("body").append("svg")
+				.attr("width", w)
+				.attr("height", h)
+				.attr("style", "border: 1px solid #aaaaaa;")
+
+		function createCircle(item, index) {
+			svg.insert("circle")
+				.attr("cx", item.pos.x)
+				.attr("cy", item.pos.y)
+				.attr("r", item.radius)
+				.style("fill", color(item.color));
+		}
+
+		function addMovement(item, index) {
+			item.pos.x += item.spd.x;
+			item.spd.y += item.gravity;
+			item.pos.y += item.spd.y;
+		}
+
+		function checkCollisions(item, index) {
+			if (item.pos.x > w - item.radius) {
+				item.pos.x = w - item.radius;
+				item.spd.x *= -1;
+				item.spd.x *= friction;
+			} else if (item.pos.x < item.radius) {
+				item.pos.x = item.radius
+				item.spd.x *= -1;
+				item.spd.x *= friction;
+			}
+
+			if (item.pos.y > h - item.radius) {
+				item.pos.y = h - item.radius;
+				item.spd.y *= -1;
+				item.spd.y *= damping;
+			} else if (item.pos.y < item.radius) {
+				item.pos.y = item.radius;
+				item.spd.y *= -1;
+				item.spd.y *= damping;
+			}
+		}
+
+
+
+		function init(fps) {
+			fpsInterval = 1000 / fps;
+			then = Date.now();
+			startTime = then;
+			draw(startTime);
+		}
+
+		function draw(timeStamp) {
+			// calc elapsed time since last loop
+			svg.selectAll("circle").remove();
+			now = Date.now();
+			elapsed = now - then;
+
+			// if enough time has elapsed, draw the next frame
+
+			if (elapsed > fpsInterval) {
+				balls.forEach(createCircle);
+				balls.forEach(addMovement);
+				balls.forEach(checkCollisions);
+				for (var i = 0; i < count; i++) {
+					balls[i].ballCollision(balls);
+				}
+			}
+			window.requestAnimationFrame(draw);
+		}
+
+		init(5);
+	</script>
+
+</body>
+<!--<script src="sketch.js"></script>-->
+
+
+</html>
