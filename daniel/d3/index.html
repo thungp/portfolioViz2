@@ -18,17 +18,19 @@
 
 <body>
 	<script>
-		var w = 640,
-			h = 800,
+		var w = 600,
+			h = 600,
 			count = 50,
 			balls = [];
-		var color = d3.scaleOrdinal(d3.schemecategory10);
+
+		var color = d3.scaleOrdinal(d3["schemeCategory20c"])
 		var fps, fpsInterval, startTime, now, then, elapsed;
-		var friction = .875,
-			damping = .786;
+		var friction = 0.85,
+			damping = 0.75;
 		for (var i = 0; i < count; i++) {
 			balls.push(new Ball(new Vec2(w / 2, Math.random() * 300),
-				new Vec2(-2 + Math.random() * 4, -0 + Math.random() * 2),
+				new Vec2(Math.random(), Math.random()),
+				// new Vec2(-2 + Math.random() * 2, -0 + Math.random() * 2),
 				Math.random() * 10,
 				Math.random() * 10,
 				i));
@@ -37,7 +39,7 @@
 		var svg = d3.select("body").append("svg")
 				.attr("width", w)
 				.attr("height", h)
-				.attr("style", "border: 1px solid #aaaaaa;")
+				.attr("style", "border: 2px solid #aaaaaa;")
 
 		function createCircle(item, index) {
 			svg.insert("circle")
