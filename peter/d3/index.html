@@ -1,0 +1,181 @@
+<htmL>
+<!--
+
+Authors: Peter and Daniel Vance
+
+Things learned:
+1. handleMouseout isn't always detected, so trying to return circel to original color isn't always
+successful. Observation was discussed here, with jquery as one work around which was not implemented: 
+https://stackoverflow.com/questions/7448468/why-cant-i-reliably-capture-a-mouseout-event
+
+
+-->
+<head>
+	<meta charset="UTF-8">
+	<title>Circle Aggrevation</title>
+	<script type="text/javascript" src="libraries/d3.js"></script>
+	<script src="libraries/Vec2.js"></script>
+	<script src="libraries/Ball.js"></script>
+
+	<!-- removes any default padding and style -->
+	<style>
+		body {
+			padding: 0;
+			margin: 0;
+		}
+	</style>
+</head>
+
+<body>
+	<script>
+		var w = 600,
+			h = 600,
+			count = 20,
+			balls = [];
+
+		var color = d3.scaleOrdinal(d3["schemeCategory20"])
+		var fps, fpsInterval, startTime, now, then, elapsed;
+		var friction = 0.85,
+			damping = 0.75;
+		for (var i = 0; i < count; i++) {
+			balls.push(new Ball(new Vec2(w / 2, Math.random() * 300),
+				//new Vec2(Math.random(),  Math.random()),
+				new Vec2(-2 + Math.random() * 2, -0 + Math.random() * 2),
+				Math.random() * 5 + 10,
+				Math.random() * .01 + .06,
+				i));
+		}
+
+		var svg = d3.select("body").append("svg")
+				.attr("width", w)
+				.attr("height", h)
+				.attr("style", "border: 2px solid #aaaaaa;")
+
+		function createCircle(item, index) {
+			var svgCircle = svg.insert("circle");
+			svgCircle
+				.attr("cx", item.pos.x)
+				.attr("cy", item.pos.y)
+				.attr("r", item.radius)
+				.attr("id", item.i)
+				.style("fill", color(item.color))
+				// https://toddmotto.com/avoiding-anonymous-javascript-functions/
+				// https://toddmotto.com/everything-you-wanted-to-know-about-javascript-scope/
+				// the mouseout doesn't seem to detect that well as the mouseover
+				// https://stackoverflow.com/questions/7448468/why-cant-i-reliably-capture-a-mouseout-event
+				.on("mouseout", handleMouseOut.bind(svgCircle, item, index))
+				.on("mouseover", handleMouseOver.bind(svgCircle, item, index))
+            	;
+
+				
+		}
+
+      	// Create Event Handlers for mouse
+      	function handleMouseOver(item, index) {  // Add interactivity
+      		//console.log( event);
+      		//console.log(item);
+      		//console.log(index);
+      		//console.log(this);
+      		// pausecomp(1000);
+            // Use D3 to select element, change color and size
+            item.color =6;
+            console.log("handleMouseOver");
+            console.log(event.relatedTarget);
+        //     var object = d3.select(this);
+        //     console.log(object);
+      		// this.attr("style", "fill: green");
+        //     this.attr({
+        //       opacity: "0.4"       
+        //      });
+			//object.style("fill", "green");
+			//pausecomp(1000);
+            //console.log( this);
+         }
+
+      	function handleMouseOut(item, index) {
+            // Use D3 to select element, change color back to normal
+ //            d3.select(this).attr({
+ //              fill: color(this.color),
+ // //             r: radius
+ //            });
+			console.log("handleMouseOut");
+			console.log(event.relatedTarget);
+			item.color = color(item.colorOrig);
+         }		
+
+		function addMovement(item, index) {
+			item.pos.x += item.spd.x;
+			item.spd.y += item.gravity;
+			item.pos.y += item.spd.y;
+		}
+
+		function checkCollisions(item, index) {
+			if (item.pos.x > w - item.radius) {
+				item.pos.x = w - item.radius;
+				item.spd.x *= -1;
+				item.spd.x *= friction;
+			} else if (item.pos.x < item.radius) {
+				item.pos.x = item.radius
+				item.spd.x *= -1;
+				item.spd.x *= friction;
+			}
+
+			if (item.pos.y > h - item.radius) {
+				item.pos.y = h - item.radius;
+				item.spd.y *= -1;
+				item.spd.y *= damping;
+			} else if (item.pos.y < item.radius) {
+				item.pos.y = item.radius;
+				item.spd.y *= -1;
+				item.spd.y *= damping;
+			}
+		}
+
+
+
+		function init(fps) {
+			fpsInterval = 1000 / fps;
+			then = Date.now();
+			startTime = then;
+			draw(startTime);
+		}
+
+		function draw(timeStamp) {
+			// calc elapsed time since last loop
+			svg.selectAll("circle").remove();
+			now = Date.now();
+			elapsed = now - then;
+
+			// if enough time has elapsed, draw the next frame
+
+			if (elapsed > fpsInterval) {
+				then = now;
+				balls.forEach(createCircle);
+				balls.forEach(addMovement);
+				balls.forEach(checkCollisions);
+				for (var i = 0; i < count; i++) {
+					balls[i].ballCollision(balls);
+				}
+
+			}
+
+
+			window.requestAnimationFrame(draw);
+		}
+
+		function pausecomp(millis)
+		{
+    		var date = new Date();
+    		var curDate = null;
+    		do { curDate = new Date(); }
+    		while(curDate-date < millis);
+		}
+
+		init(120);
+	</script>
+
+</body>
+<!--<script src="sketch.js"></script>-->
+
+
+</html>
