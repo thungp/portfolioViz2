@@ -1,0 +1,104 @@
+<htmL>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Impaird Driving Death Rate by Age, Gender, and State</title>
+    <script type="text/javascript" src="libraries/d3.js"></script>
+    <script src="https://d3js.org/topojson.v2.min.js"></script>
+
+
+    <!-- removes any default padding and style -->
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        h1 {
+            font-family: arial;
+            font-size: 1em;
+            color: #333;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+
+        .states {
+            fill: #e5e5e5;
+            stroke: #fff;
+            stroke-width: 2px;
+        }
+
+        .states:hover {
+            fill: steelblue;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="info">
+        <h1 id="name"></h1>
+    </div>
+    <script>
+        /* Final d3 Assignment
+		* Peter Thung, Daniel Vance
+        * Sources:
+        *   Map Data -> http://bl.ocks.org/mapsam/6083585
+        *   Impaired driving data -> https://www.cdc.gov/motorvehiclesafety/impaired_driving/states-data-tables.html
+		*/
+        var w = 960,
+            h = 500;
+
+        var svg = d3.select("body").append("svg")
+            .attr("width", w)
+            .attr("height", h)
+            .attr("style", "border: 2px solid #aaaaaa;")
+
+
+        var projection = d3.geoAlbersUsa()
+            .scale(1000)
+            .translate([w / 2, h / 2]);
+
+        var path = d3.geoPath(projection);
+
+        var geoProjection = d3.geoConicEqualArea()
+            .scale(1000)
+            .translate([w / 2, h / 2]);
+
+        function getStateData(state, impairedData) {
+            for (var i = 0; i < impairedData.length; i++) {
+                if (state == impairedData[i].State) {
+                    return impairedData[i]["Impaired Driving Death Rate"];
+                }
+            }
+        }
+
+        d3.csv("data/impaireddrivingdeathrate.csv", function (error, impairedData) {
+            if (error) return console.warn(error);
+            d3.json("data/us.json", function (error, us) {
+                if (error) throw error;
+
+                svg.selectAll('.states')
+                    .data(topojson.feature(us, us.objects.usStates).features)
+                    .enter()
+                    .append('path')
+                    .attr("class", "states")
+                    .attr('d', path)
+                    .on('mouseover', function (d) {
+                        svg.selectAll("incidents").remove();
+                        var name = d.properties.STATE_ABBR;
+                        var stats = getStateData(name, impairedData);
+                        if (!stats) stats = 0;
+                        return document.getElementById('name').innerHTML = name + ": " + stats + "%";
+                    });
+            });
+        });
+    </script>
+
+</body>
+
+
+</html>
