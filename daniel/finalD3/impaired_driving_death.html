@@ -48,15 +48,22 @@
         * Sources:
         *   Map Data -> http://bl.ocks.org/mapsam/6083585
         *   Impaired driving data -> https://www.cdc.gov/motorvehiclesafety/impaired_driving/states-data-tables.html
+        *   Added fill color to choropleth map, based on % driving death rate.
 		*/
         var w = 960,
             h = 500;
+
+        var color = d3.scaleThreshold()
+            .domain([1, 3, 6, 9, 12]) // currently needed to manually deterine domain by hand based on data. 
+            .range(["#f2f0f7", "#dadaeb", "#bcbddc",
+                    "#9e9ac8", "#756bb1", "#54278f"]);
+    
 
         var svg = d3.select("body").append("svg")
             .attr("width", w)
             .attr("height", h)
             .attr("style", "border: 2px solid #aaaaaa;")
-
+        
 
         var projection = d3.geoAlbersUsa()
             .scale(1000)
@@ -87,6 +94,12 @@
                     .append('path')
                     .attr("class", "states")
                     .attr('d', path)
+                    .style("fill", function (d) {
+                        var name = d.properties.STATE_ABBR;
+                        var stats = getStateData(name, impairedData);
+                        var colorValue = color(stats);
+                        return color(stats); // <-D
+                    })
                     .on('mouseover', function (d) {
                         svg.selectAll("incidents").remove();
                         var name = d.properties.STATE_ABBR;
