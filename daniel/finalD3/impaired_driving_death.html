@@ -5,7 +5,7 @@
     <title>Impaird Driving Death Rate by Age, Gender, and State</title>
     <script type="text/javascript" src="libraries/d3.js"></script>
     <script src="https://d3js.org/topojson.v2.min.js"></script>
-
+    <script type="text/javascript" src="libraries/d3-legend-2.24.0/d3-legend.js"></script> 
 
     <!-- removes any default padding and style -->
     <style>
@@ -49,22 +49,44 @@
         *   Map Data -> http://bl.ocks.org/mapsam/6083585
         *   Impaired driving data -> https://www.cdc.gov/motorvehiclesafety/impaired_driving/states-data-tables.html
         *   Added fill color to choropleth map, based on % driving death rate.
+        *   Added threshold legend utilzing http://d3-legend.susielu.com/#color-threshold
+        *           Note: there was an issue with .useClass(true) method, making
+        *                 the squares in the legend all black.
 		*/
         var w = 960,
             h = 500,
             deathRateFlag = true;
 
-        var color = d3.scaleThreshold()
-            .domain([1, 3, 6, 9, 12]) // currently needed to manually deterine domain by hand based on data.
-            .range(["#f2f0f7", "#dadaeb", "#bcbddc",
-                "#9e9ac8", "#756bb1", "#54278f"]);
+        var threshold = [1, 3, 6, 9, 12];
+        var colorRange = ["#f2f0f7", "#dadaeb", "#bcbddc",
+                "#9e9ac8", "#756bb1", "#54278f"];
 
+        var colorScale = d3.scaleThreshold()
+            .domain(threshold) // currently needed to manually deterine domain by hand based on data.
+            .range(colorRange);
+              
 
         var svg = d3.select("body").append("svg")
             .attr("width", w)
             .attr("height", h)
             .attr("style", "border: 2px solid #aaaaaa;")
 
+        // append legend Threshold
+        svg.append("g")
+          .attr("class", "legendThreshold")
+          .attr("transform", "translate(770,350)");
+
+        var legendThreshold = d3.legendColor()
+            .labelFormat(d3.format(".2f"))
+            .labels(d3.legendHelpers.thresholdLabels)
+            .useClass(false) /// this was originall true, needed to make it false to work.
+            .scale(colorScale);
+
+        svg.select(".legendThreshold")
+            .call(legendThreshold);    
+
+
+        // end append legend
 
         var projection = d3.geoAlbersUsa()
             .scale(1000)
@@ -114,8 +136,8 @@
                             } else {
                                 stats = getStatePrevalence(name, prevalenceData);
                             }
-                            var colorValue = color(stats);
-                            return color(stats); // <-D
+                            var colorValue = colorScale(stats);
+                            return colorScale(stats); // <-D
                         })
                         .on('mouseover', function (d) {
                             svg.selectAll("incidents").remove();
