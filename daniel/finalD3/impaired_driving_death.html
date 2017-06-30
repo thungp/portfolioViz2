@@ -21,6 +21,13 @@
             color: #333;
         }
 
+        .title {
+            text-align: center;
+            font-family: arial;
+            font-size: 2em;
+            color: #333;
+        }
+
         .background {
             fill: none;
             pointer-events: all;
@@ -50,6 +57,10 @@
 </head>
 
 <body>
+    <div class="title">
+        Impaird Driving Death Rate for 2012 and 2014
+    </div>
+
     <div id="info">
         <h1 id="name"></h1>
     </div>
@@ -61,9 +72,10 @@
         *   Impaired driving data -> https://www.cdc.gov/motorvehiclesafety/impaired_driving/states-data-tables.html
         *   Added fill color to choropleth map, based on % driving death rate.
         *   Zoom transition -> https://bl.ocks.org/mbostock/4699541
-                *   Added threshold legend utilzing http://d3-legend.susielu.com/#color-threshold
+        *   Added threshold legend utilzing http://d3-legend.susielu.com/#color-threshold
         *           Note: there was an issue with .useClass(true) method, making
         *                 the squares in the legend all black.
+        *   Slider for year -> http://bl.ocks.org/darrenjaworski/5397202
 		*/
         var w = 960,
             h = 500,
@@ -81,7 +93,10 @@
         var svg = d3.select("body").append("svg")
             .attr("width", w)
             .attr("height", h)
-            .attr("style", "border: 2px solid #aaaaaa;")
+        //  .attr("style", "border: 2px solid #aaaaaa;")
+
+        // var title = svg.selectAll(".title").append("div")
+        //     .
 
         // append legend Threshold
         svg.append("g")
