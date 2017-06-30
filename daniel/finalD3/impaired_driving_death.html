@@ -5,7 +5,8 @@
     <title>Impaird Driving Death Rate by Age, Gender, and State</title>
     <script type="text/javascript" src="libraries/d3.js"></script>
     <script src="https://d3js.org/topojson.v2.min.js"></script>
-    <script type="text/javascript" src="libraries/d3-legend-2.24.0/d3-legend.js"></script> 
+    <script type="text/javascript" src="libraries/d3-legend-2.24.0/d3-legend.js"></script>
+
 
     <!-- removes any default padding and style -->
     <style>
@@ -20,6 +21,11 @@
             color: #333;
         }
 
+        .background {
+            fill: none;
+            pointer-events: all;
+        }
+
         #info {
             position: absolute;
             top: 10px;
@@ -30,6 +36,11 @@
             fill: #e5e5e5;
             stroke: #fff;
             stroke-width: 2px;
+            cursor: pointer;
+        }
+
+        .states.active {
+            fill: lightseagreen;
         }
 
         .states:hover {
@@ -49,22 +60,23 @@
         *   Map Data -> http://bl.ocks.org/mapsam/6083585
         *   Impaired driving data -> https://www.cdc.gov/motorvehiclesafety/impaired_driving/states-data-tables.html
         *   Added fill color to choropleth map, based on % driving death rate.
-        *   Added threshold legend utilzing http://d3-legend.susielu.com/#color-threshold
+        *   Zoom transition -> https://bl.ocks.org/mbostock/4699541
+                *   Added threshold legend utilzing http://d3-legend.susielu.com/#color-threshold
         *           Note: there was an issue with .useClass(true) method, making
         *                 the squares in the legend all black.
 		*/
         var w = 960,
             h = 500,
+            active = d3.select(null),
             deathRateFlag = true;
 
         var threshold = [1, 3, 6, 9, 12];
         var colorRange = ["#f2f0f7", "#dadaeb", "#bcbddc",
-                "#9e9ac8", "#756bb1", "#54278f"];
+            "#9e9ac8", "#756bb1", "#54278f"];
 
         var colorScale = d3.scaleThreshold()
             .domain(threshold) // currently needed to manually deterine domain by hand based on data.
             .range(colorRange);
-              
 
         var svg = d3.select("body").append("svg")
             .attr("width", w)
@@ -73,8 +85,8 @@
 
         // append legend Threshold
         svg.append("g")
-          .attr("class", "legendThreshold")
-          .attr("transform", "translate(770,350)");
+            .attr("class", "legendThreshold")
+            .attr("transform", "translate(770,350)");
 
         var legendThreshold = d3.legendColor()
             .labelFormat(d3.format(".2f"))
@@ -83,10 +95,15 @@
             .scale(colorScale);
 
         svg.select(".legendThreshold")
-            .call(legendThreshold);    
+            .call(legendThreshold);
 
 
         // end append legend
+
+
+
+        var g = svg.append("g")
+            .style("stroke-width", "1.5px");
 
         var projection = d3.geoAlbersUsa()
             .scale(1000)
@@ -114,42 +131,81 @@
             }
         }
 
+        function clicked(d) {
+            if (active.node() === this) return reset();
+            active.classed("active", false);
+            active = d3.select(this).classed("active", true);
+
+            var bounds = path.bounds(d),
+                dx = bounds[1][0] - bounds[0][0],
+                dy = bounds[1][1] - bounds[0][1],
+                x = (bounds[0][0] + bounds[1][0]) / 2,
+                y = (bounds[0][1] + bounds[1][1]) / 2,
+                scale = .8 / Math.max(dx / w, dy / h),
+                translate = [w / 2 - scale * x, h / 2 - scale * y];
+
+            g.transition()
+                .duration(750)
+                .style("stroke-width", 1.5 / scale + "px")
+                .attr("transform", "translate(" + translate + ")scale(" + scale + ")");
+            g.append("rect")
+                .attr("x", "0")
+                .attr("y", "0")
+                .attr("width", w / 20)
+                .attr("height", h / 15)
+                .attr("transform", "translate(" + translate + ")scale(" + scale + ")");
+        }
+
+        function reset() {
+            active.classed("active", false);
+            active = d3.select(null);
+
+            g.transition()
+                .duration(750)
+                .style("stroke-width", "1.5px")
+                .attr("transform", "");
+
+        }
+
         d3.csv("data/impaired-driving-prevalence-2012-all-states.csv", function (error, prevalenceData) {
             if (error) return console.warn(error);
             d3.csv("data/impaireddrivingdeathrate.csv", function (error, deathRateData) {
                 if (error) return console.warn(error);
+                d3.csv("data/Impaired_Driving_Death_Rate.csv", function (error, aggData) {
+                    if (error) return console.warn(error);
+                    d3.json("data/us.json", function (error, us) {
+                        if (error) throw error;
 
-                d3.json("data/us.json", function (error, us) {
-                    if (error) throw error;
+                        g.selectAll('.states')
+                            .data(topojson.feature(us, us.objects.usStates).features)
+                            .enter()
+                            .append('path')
+                            .attr("class", "states")
+                            .attr('d', path)
+                            .style("fill", function (d) {
+                                var name = d.properties.STATE_ABBR;
+                                var stats;
+                                if (deathRateFlag) {
+                                    stats = getStateDeathRate(name, deathRateData);
+                                } else {
+                                    stats = getStatePrevalence(name, prevalenceData);
+                                }
+                                var colorValue = colorScale(stats);
+                                return colorScale(stats); // <-D
+                            })
+                            .on('mouseover', function (d) {
+                                svg.selectAll("incidents").remove();
+                                var name = d.properties.STATE_ABBR;
+                                var prevalence = getStatePrevalence(name, prevalenceData),
+                                    deathRate = getStateDeathRate(name, deathRateData);
+                                if (!prevalence) prevalence = 0;
+                                if (!deathRate) deathRate = 0;
 
-                    svg.selectAll('.states')
-                        .data(topojson.feature(us, us.objects.usStates).features)
-                        .enter()
-                        .append('path')
-                        .attr("class", "states")
-                        .attr('d', path)
-                        .style("fill", function (d) {
-                            var name = d.properties.STATE_ABBR;
-                            var stats;
-                            if (deathRateFlag) {
-                                stats = getStateDeathRate(name, deathRateData);
-                            } else {
-                                stats = getStatePrevalence(name, prevalenceData);
-                            }
-                            var colorValue = colorScale(stats);
-                            return colorScale(stats); // <-D
-                        })
-                        .on('mouseover', function (d) {
-                            svg.selectAll("incidents").remove();
-                            var name = d.properties.STATE_ABBR;
-                            var prevalence = getStatePrevalence(name, prevalenceData),
-                                deathRate = getStateDeathRate(name, deathRateData);
-                            if (!prevalence) prevalence = 0;
-                            if (!deathRate) deathRate = 0;
-
-                            return document.getElementById('name').innerHTML = name + ": </br>Prevalence: " + prevalence
-                                                                               + "%</br>Death Rate: " + deathRate + "%";
-                        });
+                                return document.getElementById('name').innerHTML = name + ": </br>Prevalence: " + prevalence
+                                    + "%</br>Death Rate: " + deathRate + "%";
+                            })
+                            .on("click", clicked);
+                    });
                 });
             });
         });
