@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Impaird Driving Death Rate by Age, Gender, and State</title>
-    <script type="text/javascript" src="libraries/d3.js"></script>
+    <!-- <script type="text/javascript" src="libraries/d3.js"></script> -->
+    <script src="//d3js.org/d3.v4.min.js"></script>
     <script src="https://d3js.org/topojson.v2.min.js"></script>
     <script type="text/javascript" src="libraries/d3-legend-2.24.0/d3-legend.js"></script>
+
 
 
     <!-- removes any default padding and style -->
@@ -53,6 +55,30 @@
         .states:hover {
             fill: steelblue;
         }
+        // slider styling
+        .track {
+          stroke: #000;
+          stroke-opacity: 0.3;
+          stroke-width: 10px;
+        }
+
+        .track-inset {
+          stroke: #ddd;
+          stroke-width: 8px;
+        }
+
+        .track-overlay {
+          pointer-events: stroke;
+          stroke-width: 50px;
+          cursor: crosshair;
+        }
+
+        .handle {
+          fill: #fff;
+          stroke: #000;
+          stroke-opacity: 0.5;
+          stroke-width: 1.25px;
+        }
     </style>
 </head>
 
@@ -60,6 +86,7 @@
     <div class="title">
         Impaired Driving Death Rate for 2012 and 2014
     </div>
+ 
 
     <div id="info">
         <h1 id="name"></h1>
@@ -78,9 +105,10 @@
         *   Slider for year -> http://bl.ocks.org/darrenjaworski/5397202
 		*/
         var w = 960,
-            h = 500,
+            h = 700,
             active = d3.select(null),
             deathRateFlag = true;
+        var deathRateYear = 2012;
 
         var threshold = [1, 3, 6, 9, 12];
         var colorRange = ["#f2f0f7", "#dadaeb", "#bcbddc",
@@ -96,8 +124,105 @@
         //  .attr("style", "border: 2px solid #aaaaaa;")
 
         // var title = svg.selectAll(".title").append("div")
-        //     .
+        
+        // add test slider
+        var margin = {right: 50, left: 50},
+            width = +svg.attr("width") - margin.left - margin.right,
+            height = +svg.attr("height");
 
+
+        // var x = d3.scaleLinear()
+        //var yearList = [2012, 2013, 2014, 2015, 2016];  // test for greater number of years
+        var yearList = [2012, 2014];
+        var sliderBarPixelDomain = [0,600];
+
+        var x = d3.scaleQuantile()
+            .domain(sliderBarPixelDomain)
+            .range(yearList);
+            //.clamp(true); // does not exist for d3.scaleQuantize
+
+        var slider = svg.append("g")
+            .attr("class", "slider")
+            .attr("transform", "translate(" + margin.left + "," + "600" + ")");
+            
+        slider.append("line")
+            .attr("class", "track")
+            .attr("x1", x.domain()[0])
+            .attr("x2", x.domain()[1])
+          .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+            .attr("class", "track-inset")
+          .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+            .attr("class", "track-overlay")
+            .call(d3.drag()
+                .on("start.interrupt", function() { slider.interrupt(); })
+                .on("start drag", function() {
+                        year(d3.event.x); 
+                    }));
+
+        // crate the axis
+
+        slider.insert("g", ".track-overlay")
+            .attr("class", "ticks")
+            .attr("transform", "translate(0," + 30 + ")") // controls how many pixels below bar 
+          .selectAll("text")
+          .data(getTickArray(x))
+          .enter().append("text")
+            .attr("x", function(d) {return d;})
+            .attr("text-anchor", "middle")
+            .text(function(d) {
+                //console.log(x(d)); 
+                return x(d); });
+
+        var handle = slider.insert("circle", ".track-overlay")
+            .attr("class", "handle")
+            .attr("r", 9);
+        
+        function year(xActual) {
+          // code below fixes the actual handle to snap to the tick marks
+          // for ranges that 
+          xExtent = x.invertExtent(x(xActual));
+          xExtentLeft = xExtent[0];
+          xExtentRight = xExtent[1];
+          xExtentMid = (xExtentLeft + xExtentRight)/2;
+          if(xExtentRight === x.domain()[1]) {
+            handle.attr("cx", x.domain()[1]);
+          } else if (xExtentLeft === x.domain()[0]) {
+            handle.attr("cx", x.domain()[0]);
+          } else {
+            handle.attr("cx", xExtentMid);
+          }
+
+        }
+
+        /* 
+            custom function as ticks method in D3 does not allow 
+            number of ticks to be absolute.
+        */
+        function getTickArray(scale){
+            domain = scale.domain();
+            range = scale.range();
+            domainLength = scale.domain()[1] - scale.domain()[0];
+            binSize = domainLength / (range.length - 1);
+            var tickArray = [];
+            for (i = 0; i < range.length; i++) {
+                tickArray.push(i * binSize);
+
+            }
+            return tickArray;
+        }
+
+        function isStrict(fn) {
+            if (typeof fn != "function")
+                throw new TypeError("expected function");
+            try {
+                fn.caller; // expected to throw
+                return false;
+            } catch(e) {
+                return true;
+            }
+        } 
+
+// end slider code
         // append legend Threshold
         svg.append("g")
             .attr("class", "legendThreshold")
