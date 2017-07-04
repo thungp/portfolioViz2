@@ -7,7 +7,7 @@
     <!-- <script src="//d3js.org/d3.v4.min.js"></script> -->
     <script src="https://d3js.org/topojson.v2.min.js"></script>
     <script type="text/javascript" src="libraries/d3-legend-2.24.0/d3-legend.js"></script>
-
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
 
 
     <!-- removes any default padding and style -->
@@ -103,21 +103,45 @@
         *           Note: there was an issue with .useClass(true) method, making
         *                 the squares in the legend all black.
         *   Slider for year -> http://bl.ocks.org/darrenjaworski/5397202
-        *   Added code to link choroplet graph to change based on year selected. 
+        *   Added code to link choropleth graph to change based on year selected. 
+        *   visualized death rates for age groups as well as gender.
 		*/
         var w = 960,
             h = 700,
             active = d3.select(null),
             deathRateFlag = true;
         var deathRateYear = 2012;
+
+        var ageRangeSelected = "All Ages"; // e.g. All Ages, Ages 0-20, Ages 21-34, Ages 35+
         var aggDataPersisted;
         var usPersisted;
         var prevalenceDataPersisted;
         var deathRateDataPersisted;
 
+        var yearSliderY = 585;
+        var genderButtonsGroupY = 610;
+        var ageRangeSliderY = 665;
+
         var threshold = [1, 3, 6, 9, 12];
         var colorRange = ["#f2f0f7", "#dadaeb", "#bcbddc",
             "#9e9ac8", "#756bb1", "#54278f"];
+
+        // Globals in support of Buttons
+        //fontawesome button labels
+        var labels= ['\uf183','\uf182','\uf0c0'];
+        var labelsId = ['Male', 'Female', 'Both'];
+        var genderSelected = labelsId[2];  // defalt both
+        //colors for different button states 
+        var defaultColor= "#7777BB"
+        var hoverColor= "#0000ff"
+        var pressedColor= "#000077" 
+        var pressedColor2= "#080077" 
+        var bWidth= 40; //button width
+        var bHeight= 25; //button height
+        var bSpace= 10; //space between buttons
+        var x0= 20; //x offset
+        var y0= 10; //y offset     
+        // end globals in support of buttons  
 
         var colorScale = d3.scaleThreshold()
             .domain(threshold) // currently needed to manually deterine domain by hand based on data.
@@ -129,8 +153,12 @@
         //  .attr("style", "border: 2px solid #aaaaaa;")
 
         // var title = svg.selectAll(".title").append("div")
+
+        // add D3 Radio Buttons to represent Male/Female/Both selections to access those particular
+        // data
+
         
-        // add test slider
+        // add  sliders Year and Age Range
         var margin = {right: 50, left: 50},
             width = +svg.attr("width") - margin.left - margin.right,
             height = +svg.attr("height");
@@ -139,21 +167,31 @@
         // var x = d3.scaleLinear()
         //var yearList = [2012, 2013, 2014, 2015, 2016];  // test for greater number of years
         var yearList = [2012, 2014];
+        var ageRangeList = ["All Ages", "Ages 0-20", "Ages 21-34", "Ages 35+"];
         var sliderBarPixelDomain = [0,600];
 
-        var x = d3.scaleQuantile()
+        var xYear = d3.scaleQuantile()
             .domain(sliderBarPixelDomain)
             .range(yearList);
             //.clamp(true); // does not exist for d3.scaleQuantize
 
+        var xAgeRange = d3.scaleQuantile()
+            .domain(sliderBarPixelDomain)
+            .range(ageRangeList);
+            //.clamp(true); // does not exist for d3.scaleQuantize
+
         var slider = svg.append("g")
-            .attr("class", "slider")
-            .attr("transform", "translate(" + margin.left + "," + "600" + ")");
+            .attr("class", "slider year")
+            .attr("transform", "translate(" + margin.left + "," + yearSliderY + ")");
+
+        var sliderAgeRange = svg.append("g")
+            .attr("class", "slider ageRange")
+            .attr("transform", "translate(" + margin.left + "," + ageRangeSliderY + ")");    
             
         slider.append("line")
             .attr("class", "track")
-            .attr("x1", x.domain()[0])
-            .attr("x2", x.domain()[1])
+            .attr("x1", xYear.domain()[0])
+            .attr("x2", xYear.domain()[1])
           .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
             .attr("class", "track-inset")
           .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
@@ -161,54 +199,110 @@
             .call(d3.drag()
                 .on("start.interrupt", function() { slider.interrupt(); })
                 .on("start drag", function() {
-                        year(d3.event.x); 
+                        year(d3.event.x); // so deathRateYear is updated while it is being dragged vice on dragended.  May have effect of updating choropleth as slider is being slid, if we had more than two years.
                     })
-                .on("end", dragended)
+                .on("end", dragendedYear)
                 )
                 ;
 
-
+        sliderAgeRange.append("line")
+            .attr("class", "track")
+            .attr("x1", xAgeRange.domain()[0])
+            .attr("x2", xAgeRange.domain()[1])
+          .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+            .attr("class", "track-inset")
+          .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+            .attr("class", "track-overlay")
+            .call(d3.drag()
+                .on("start.interrupt", function() { sliderAgeRange.interrupt(); })
+                .on("start drag", function() {
+                        ageRange(d3.event.x); // so deathRateYear is updated while it is being dragged vice on dragended.  May have effect of updating choropleth as slider is being slid, if we had more than two years.
+                        updateChoropleth("ageRange");
+                    })
+                .on("end", dragendedAgeRange)
+                )
+                ;
 
         slider.insert("g", ".track-overlay")
             .attr("class", "ticks")
             .attr("transform", "translate(0," + 30 + ")") // controls how many pixels below bar 
           .selectAll("text")
-          .data(getTickArray(x))
+          .data(getTickArray(xYear))
           .enter().append("text")
             .attr("x", function(d) {return d;})
             .attr("text-anchor", "middle")
             .text(function(d) {
-                //console.log(x(d)); 
-                return x(d); });
+                //console.log(xYear(d)); 
+                return xYear(d); });
 
-        var handle = slider.insert("circle", ".track-overlay")
-            .attr("class", "handle")
+        sliderAgeRange.insert("g", ".track-overlay")
+            .attr("class", "ticks")
+            .attr("transform", "translate(0," + 30 + ")") // controls how many pixels below bar 
+          .selectAll("text")
+          .data(getTickArray(xAgeRange))
+          .enter().append("text")
+            .attr("x", function(d) {return d;})
+            .attr("text-anchor", "middle")
+            .text(function(d) {
+                //console.log(xYear(d)); 
+                return xAgeRange(d); });
+
+        var handleYear = slider.insert("circle", ".track-overlay")
+            .attr("class", "handle year")
             .attr("r", 9);
+
+        var handleAgeRange = sliderAgeRange.insert("circle", ".track-overlay")
+            .attr("class", "handle ageRange")
+            .attr("r", 9);    
         
         function year(xActual) {
           // code below fixes the actual handle to snap to the tick marks
           // for ranges that 
-          xExtent = x.invertExtent(x(xActual));
-          xExtentLeft = xExtent[0];
-          xExtentRight = xExtent[1];
-          xExtentMid = (xExtentLeft + xExtentRight)/2;
+          var xExtent = xYear.invertExtent(xYear(xActual));
+          var xExtentLeft = xExtent[0];
+          var xExtentRight = xExtent[1];
+          var xExtentMid = (xExtentLeft + xExtentRight)/2;
           var xPixelLocation;
-          if(xExtentRight === x.domain()[1]) {
-            handle.attr("cx", x.domain()[1]);
-          } else if (xExtentLeft === x.domain()[0]) {
-            handle.attr("cx", x.domain()[0]);
+          if(xExtentRight === xYear.domain()[1]) {
+            handleYear.attr("cx", xYear.domain()[1]);
+          } else if (xExtentLeft === xYear.domain()[0]) {
+            handleYear.attr("cx", xYear.domain()[0]);
           } else {
-            handle.attr("cx", xExtentMid);
+            handleYear.attr("cx", xExtentMid);
           }
-          deathRateYear = x(xActual);
+          deathRateYear = xYear(xActual);
+        }
+
+        function ageRange(xActual) {
+          // code below fixes the actual handle to snap to the tick marks
+          // for ranges that 
+          var xExtent = xAgeRange.invertExtent(xAgeRange(xActual));
+          var xExtentLeft = xExtent[0];
+          var xExtentRight = xExtent[1];
+          var xExtentMid = (xExtentLeft + xExtentRight)/2;
+          var xPixelLocation;
+          if(xExtentRight === xAgeRange.domain()[1]) {
+            handleAgeRange.attr("cx", xAgeRange.domain()[1]);
+          } else if (xExtentLeft === xAgeRange.domain()[0]) {
+            handleAgeRange.attr("cx", xAgeRange.domain()[0]);
+          } else {
+            handleAgeRange.attr("cx", xExtentMid);
+          }
+          ageRangeSelected = xAgeRange(xActual);
         }
 
         // drag handler functions
-        function dragended(d) {
-            //alert("drag ended" + d3.event.x);
-            alert("year = " + deathRateYear); 
-            // re-calculate death rate colors. 
-            var states = g.selectAll('.states')
+        function dragendedYear(d) {
+            updateChoropleth("year");
+        }
+
+        function dragendedAgeRange(d) {
+            updateChoropleth("ageRange");
+        }
+
+        function updateChoropleth(filterPath) {
+           // re-calculate death rate colors. 
+           var states = svg.selectAll('.states')
                 .data(topojson.feature(usPersisted, usPersisted.objects.usStates).features);
 
             //not expecting less states so not expecting this to do anything
@@ -223,34 +317,19 @@
                 .style("fill", function (d) {
                     //console.log(d);
                     var name = d.properties.STATE_ABBR;
-                    var stats;
-                    if (deathRateFlag) {
-                        if (deathRateYear == 2014){
-                            if(name === "Washington DC") {
-                                name = "District of Columbia"; // fixes issue where 
-                            }
-                            var result = aggDataPersisted.filter(function (obj) {return obj['State '] == name;});
-                            if(result[0]["All Ages, 2014"] === undefined){
-                                stats = 0;
-                            } else {
-                                stats = +result[0]["All Ages, 2014"];
-                            }          
-                            
-                        } else {
-                            // original default behavior 2012
-                            stats = getStateDeathRate(name, deathRateDataPersisted);
-                        }
-                    } else {
-                        stats = getStatePrevalence(name, prevalenceDataPersisted);
-                    }
+                    var result = aggDataPersisted.filter(function (obj) {return obj['State '] == name;});
+                    var stats = getStateDeathRateV2(name, filterPath);
                     var colorValue = colorScale(stats);
                     return colorScale(stats); // <-D
                 })
                 .on('mouseover', function (d) {
                     svg.selectAll("incidents").remove();
                     var name = d.properties.STATE_ABBR;
-                    var prevalence = getStatePrevalence(name, prevalenceDataPersisted),
-                        deathRate = getStateDeathRate(name, deathRateDataPersisted);
+                    if(name === "Washington DC") {
+                        name = "District of Columbia"; // fixes issue where 
+                    }
+                    var prevalence = getStatePrevalence(name, prevalenceDataPersisted);
+                    var deathRate = getStateDeathRateV2(name, filterPath);
                     if (!prevalence) prevalence = 0;
                     if (!deathRate) deathRate = 0;
 
@@ -258,6 +337,7 @@
                         + "%</br>Death Rate: " + deathRate + "%";
                 })
                 .on("click", clicked);
+
         }
 
         /* 
@@ -289,6 +369,93 @@
         } 
 
 // end slider code
+        // add button code
+        //backdrop of color
+        // var background= svg.append("rect")
+        //     .attr("id","backgroundRect")
+        //     .attr("width",300)
+        //     .attr("height",50)
+        //     .attr("x", 0)
+        //     .attr("y", genderButtonsGroupY)
+        //     .attr("fill","#DAC99A")
+
+      
+        //container for all buttons
+        var allButtons= svg.append("g")
+            .attr("id","allButtons") 
+            .attr("transform", "translate(50, " + genderButtonsGroupY + ")");
+
+       //text that the radio button will toggle
+        var number= allButtons.append("text")
+            .attr("id","numberToggle")
+            .attr("x", 180)
+            .attr("y",30)
+            .attr("fill","green")
+            .attr("font-size",24)
+            // .text("[click a button]")               
+        //groups for each button (which will hold a rect and text)
+        var buttonGroups= allButtons.selectAll("g.button")
+            .data(labels)
+            .enter()
+            .append("g")
+            .attr("class","button")
+            .attr("class", function (d, i) { return "button " + labelsId[i] })
+            .style("cursor","pointer")
+            .on("click",function(d,i) {
+                updateButtonColors(d3.select(this), d3.select(this.parentNode));
+                // d3.select("#numberToggle").text(i+1)
+            })
+            .on("mouseover", function() {
+                if (d3.select(this).select("rect").attr("fill") != pressedColor) {
+                    d3.select(this)
+                        .select("rect")
+                        .attr("fill",hoverColor);
+                }
+            })
+            .on("mouseout", function() {
+                if (d3.select(this).select("rect").attr("fill") != pressedColor) {
+                    d3.select(this)
+                        .select("rect")
+                        .attr("fill",defaultColor);
+                }
+            })
+
+
+        //adding a rect to each toggle button group
+        //rx and ry give the rect rounded corner
+        buttonGroups.append("rect")
+            .attr("class","buttonRect")
+            .attr("width",bWidth)
+            .attr("height",bHeight)
+            .attr("x",function(d,i) {return x0+(bWidth+bSpace)*i;})
+            .attr("y",y0)
+            .attr("rx",5) //rx and ry give the buttons rounded corners
+            .attr("ry",5)
+            .attr("fill",defaultColor)
+        //adding text to each toggle button group, centered 
+        //within the toggle button rect
+        buttonGroups.append("text")
+            .attr("class","buttonText")
+            .attr("font-family","FontAwesome")
+            .attr("x",function(d,i) {
+                return x0 + (bWidth+bSpace)*i + bWidth/2;
+            })
+            .attr("y",y0+bHeight/2)
+            .attr("text-anchor","middle")
+            .attr("dominant-baseline","central")
+            .attr("fill","white")
+            .text(function(d) {return d;})
+
+        function updateButtonColors(button, parent) {
+            parent.selectAll("rect")
+                    .attr("fill",defaultColor)
+
+            button.select("rect")
+                    .attr("fill",pressedColor)
+            // one place to update visualization 
+            genderSelected = button.attr("class").split(" ")[1]; // set global for which gender selected
+            updateChoropleth("gender");
+        }
         // append legend Threshold
         svg.append("g")
             .attr("class", "legendThreshold")
@@ -336,6 +503,61 @@
                 }
             }
         }
+
+        function getStateDeathRateV2(state, filterPath) {
+            if (state === "Washington DC") {
+                state = "District of Columbia"; // fixes issue of state mismatch on DC 
+            }
+
+            var result = aggDataPersisted.filter(function (obj) {return obj['State '] == state;});
+            var stats = 0;
+            var columnTitle = "";
+            if (deathRateFlag) {
+                //console.log(filterPath);
+                // if filter path comes from gender. 
+                if (filterPath === "gender") {
+                    // two cases 
+                    // case 1: if gender is both, let ageRangeSelected pass on through tocolumn title
+                    if (genderSelected === "Both") {
+                        columnTitle = ageRangeSelected + ", " + deathRateYear;
+                    } else {
+                        // gender is either male or female, hence show either all Male/Female for particularyear
+                        columnTitle = genderSelected + ", " + deathRateYear;
+                        // reset ageRange to All Ages
+                        //*** TODO
+                        ageRange(0); // resetting ageRange handle to All Ages
+                    }
+        
+                } else if (filterPath === "ageRange") {
+                    // path comes from ageRange
+                    columnTitle = "ageRangeSelected" + ", " + deathRateYear;
+                    // reset gender to both
+                    updateButtonColors(d3.select("g.button.both"), d3.select("#allButtons"));   
+                } else {
+                    // filter path must be "year"
+                    if (genderSelected === "Both") {
+                        columnTitle = ageRangeSelected + ", " + deathRateYear;
+                    } else {
+                        // A gender must be selected
+                        columnTitle = genderSelected + ", " + deathRateYear;
+                    }
+
+                }
+
+                if(result[0][columnTitle] === undefined){
+                        stats = 0;
+                } else {
+                    stats = +result[0][columnTitle];
+                }       
+
+            } else {
+                stats = getStatePrevalence(name, prevalenceDataPersisted);
+            }
+
+            return stats;
+        }
+
+
 
         function clicked(d) {
             if (active.node() === this) return reset();
@@ -415,6 +637,8 @@
                                     + "%</br>Death Rate: " + deathRate + "%";
                             })
                             .on("click", clicked);
+
+                        updateButtonColors(d3.select("g.button.both"), d3.select("#allButtons"));    
                     });
                 });
             });
@@ -446,6 +670,10 @@
     </script>
 
 </body>
+<script>
+        // ensure both male and female are selected by default (add after body tag so Dom is completely loaded.)
+        //updateButtonColors(d3.select("g.button.both"), d3.select("#allButtons"));
+</script>
 
 
 </html>
