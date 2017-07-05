@@ -83,7 +83,6 @@
         /* Bar Chart */
 
         .bar {
-
         }
 
         .bar:hover {
@@ -341,21 +340,12 @@
                 max.push(r.stats);
             });
 
-            console.log(y(results[3].stats));
             yMax = d3.max(max);
             y.domain([0, yMax])
                 .range([400, 0]);
 
-            console.log(yMax);
-            ticks = 400 / yMax;
-            console.log(ticks);
-            console.log(height);
-
-            console.log(results);
-
             chart.append("g")
                 .attr("class", "x axis")
-                // .attr("transform", "translate(150, 550)")
                 .call(xAxis)
                 .selectAll("text")
                 .style("text-anchor", "end")
