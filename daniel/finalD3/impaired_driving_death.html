@@ -54,7 +54,9 @@
 
         .states:hover {
             fill: steelblue;
-        } // slider styling
+        }
+        /* slider styling */
+
         .track {
             stroke: #000;
             stroke-opacity: 0.3;
@@ -77,6 +79,30 @@
             stroke: #000;
             stroke-opacity: 0.5;
             stroke-width: 1.25px;
+        }
+        /* Bar Chart */
+
+        .bar {
+
+        }
+
+        .bar:hover {
+            fill: lightskyblue;
+        }
+
+        .bar.active {
+            fill: lightseagreen
+        }
+
+        .axis {
+            font: 10px arial;
+        }
+
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: #000;
+            shape-rendering: crispEdges;
         }
     </style>
 </head>
@@ -104,6 +130,7 @@
         *   Slider for year -> http://bl.ocks.org/darrenjaworski/5397202
         *   Added code to link choropleth graph to change based on year selected.
         *   visualized death rates for age groups as well as gender.
+        *   Histogram -> http://bl.ocks.org/jensgrubert/7777399
 		*/
         var w = 960,
             h = 700,
@@ -142,9 +169,17 @@
         var y0 = 10; //y offset
         // end globals in support of buttons
 
-        var colorScale = d3.scaleThreshold()
-            .domain(threshold) // currently needed to manually deterine domain by hand based on data.
-            .range(colorRange);
+        // BarChart
+        var x = d3.scaleBand().domain(["Female 2012", "Male 2012", "Female 2014", "Male 2014"])
+            .range([0, 650])
+            .paddingOuter(0.1);
+        var y = d3.scaleLinear();
+
+        var xAxis = d3.axisBottom(x)
+            .ticks(4);
+        var yAxis = d3.axisLeft(y)
+            .ticks(6);
+        // End Bar Chart
 
         var svg = d3.select("body").append("svg")
             .attr("width", w)
@@ -152,6 +187,14 @@
         //  .attr("style", "border: 2px solid #aaaaaa;")
 
         // var title = svg.selectAll(".title").append("div")
+
+        var margin = { right: 50, left: 50 },
+            width = +svg.attr("width") - margin.left - margin.right,
+            height = +svg.attr("height");
+
+        var colorScale = d3.scaleThreshold()
+            .domain(threshold) // currently needed to manually deterine domain by hand based on data.
+            .range(colorRange);
 
         var g = svg.append("g")
             .style("stroke-width", "1.5px");
@@ -230,8 +273,14 @@
             });
         });
 
+        var chart = svg.append("g")
+            .attr("class", "chart")
+            .attr("transform", "translate(150, 550)");
+
         function clicked(d) {
-            if (active.node() === this) return reset();
+            if (active.node() === this) {
+                return reset()
+            }
             active.classed("active", false);
             active = d3.select(this).classed("active", true);
 
@@ -253,12 +302,105 @@
                 .attr("width", w / 20)
                 .attr("height", h / 15)
                 .attr("transform", "translate(" + translate + ")scale(" + scale + ")");
+
+            newBarChart(d);
+        }
+
+        function newBarChart(data) {
+            chart.selectAll("g").remove()
+            chart.selectAll("rect").remove();
+
+            var tmpGender = genderSelected;
+            var tmpAge = ageRangeSelected;
+            var tmpYear = deathRateYear;
+            var gender = ["Female", "Male"];
+            var year = ["2012", "2014"];
+            var results = [];
+            var name;
+
+            gender.forEach(function (g) {
+                year.forEach(function (y) {
+                    name = "" + g + " " + y;
+                    genderSelected = g;
+                    deathRateYear = y;
+                    results.push({
+                        "name": name,
+                        "gender": g,
+                        "year": y,
+                        "stats": getStateDeathRateV2(data.properties.STATE_ABBR, "gender")
+                    });
+                });
+            });
+
+            deathRateYear = tmpYear;
+            genderSelected = tmpGender;
+            ageRangeSelected = tmpAge;
+
+            var max = [];
+            results.forEach(function (r) {
+                max.push(r.stats);
+            });
+
+            console.log(y(results[3].stats));
+            yMax = d3.max(max);
+            y.domain([0, yMax])
+                .range([400, 0]);
+
+            console.log(yMax);
+            ticks = 400 / yMax;
+            console.log(ticks);
+            console.log(height);
+
+            console.log(results);
+
+            chart.append("g")
+                .attr("class", "x axis")
+                // .attr("transform", "translate(150, 550)")
+                .call(xAxis)
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "2.5em");
+
+            chart.append("g")
+                .attr("class", "y axis")
+                .attr("transform", "translate(0, -400)")
+                .call(yAxis)
+                .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text("Value ($)");
+
+            var bar = chart.selectAll(".bar")
+                .remove()
+                .exit()
+                .data(results)
+
+            bar.enter()
+                .append("rect")
+                .attr("class", "bar")
+                .attr("x", function (d) {
+                    return x(d.name);
+                })
+                .attr("width", 100)
+                .attr("y", function (d) { return y(d.stats); })
+                .attr("height", function (d) {  return (400 - y(d.stats)); })
+                .attr("transform", "translate(20, -400)")
+                .attr("fill", function(d) {
+                    if(d.gender == "Female"){
+                        return "rgb(230, 180, 180)";
+                    } else {
+                        return "rgb(180, 230, 230)";
+                    }
+                });
         }
 
         function reset() {
+            chart.selectAll("g").remove();
+            chart.selectAll("rect").remove();
             active.classed("active", false);
             active = d3.select(null);
-
             g.transition()
                 .duration(750)
                 .style("stroke-width", "1.5px")
@@ -270,12 +412,9 @@
         // data
 
 
+
+
         // add  sliders Year and Age Range
-        var margin = { right: 50, left: 50 },
-            width = +svg.attr("width") - margin.left - margin.right,
-            height = +svg.attr("height");
-
-
         // var x = d3.scaleLinear()
         //var yearList = [2012, 2013, 2014, 2015, 2016];  // test for greater number of years
         var yearList = [2012, 2014];
@@ -571,7 +710,7 @@
         // append legend Threshold
         svg.append("g")
             .attr("class", "legendThreshold")
-            .attr("transform", "translate(770,518)");
+            .attr("transform", "translate(785,570)");
 
         var legendThreshold = d3.legendColor()
             .labelFormat(d3.format(".2f"))
