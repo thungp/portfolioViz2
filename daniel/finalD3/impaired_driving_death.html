@@ -130,6 +130,7 @@
         *   Added code to link choropleth graph to change based on year selected.
         *   visualized death rates for age groups as well as gender.
         *   Histogram -> http://bl.ocks.org/jensgrubert/7777399
+        *   added legend key state selection fill/unfill
 		*/
         var w = 960,
             h = 700,
@@ -147,9 +148,16 @@
         var genderButtonsGroupY = 610;
         var ageRangeSliderY = 665;
 
-        var threshold = [1, 3, 6, 9, 12];
+        var threshold = [1, 3, 6, 9, 11];
         var colorRange = ["#f2f0f7", "#dadaeb", "#bcbddc",
             "#9e9ac8", "#756bb1", "#54278f"];
+
+        var lastFilterPath = null;
+
+        // globals in support of legend selection
+        var selectedFillOpacity = .85;
+        var unSelectedFillOpacity = 1;
+        var selectedFillColor = d3.color("Orange");
 
         // Globals in support of Buttons
         //fontawesome button labels
@@ -543,6 +551,9 @@
         }
 
         function updateChoropleth(filterPath) {
+            unSelectAllStates(); // to prevent unintended selection of states based on new data
+                                 // need to do this first, prior to changing states else 
+                                 // if states are selected, would be overiding previous state fill color
             // re-calculate death rate colors.
             var states = svg.selectAll('.states')
                 .data(topojson.feature(usPersisted, usPersisted.objects.usStates).features);
@@ -551,7 +562,6 @@
             states.exit().remove();
 
             // planning on skipping .enter() as not expecting any new states
-
             // // udpate
             states.merge(states)
                 .style("fill", function (d) {
@@ -559,6 +569,9 @@
                     var name = d.properties.STATE_ABBR;
                     var result = aggDataPersisted.filter(function (obj) { return obj['State '] == name; });
                     var stats = getStateDeathRateV2(name, filterPath);
+                    tempDeathRate = stats;
+                    // ref: https://stackoverflow.com/questions/3363463/append-custom-attributes-to-a-dom-node
+                    this.setAttribute('value', stats); // store copy of current calculate death stats in dom for retreival by legend code
                     var colorValue = colorScale(stats);
                     return colorScale(stats);
                 })
@@ -577,7 +590,94 @@
                         + "%</br>Death Rate: " + deathRate + "%";
                 })
                 .on("click", clicked);
+                
 
+        }
+
+        // outlineStateBasedOnDeathRateValue
+        function toggleLegendState(lowerBound, upperBound, cell) {
+
+                            // console.log(bounds);
+
+
+            // check for cell state
+            var cellState = cell.getAttribute('selected');
+            if(cellState === "true") {
+                // cell is selected -> unselected
+                // update legend rectange fill color to original  and cell state to false
+                
+                cell.setAttribute('selected', "false");
+                var rectangle = d3.select(cell).select("rect.swatch")
+                var unSelectedRectangleFillColor = rectangle.attr("originalFillColor");
+                rectangle.style("fill", unSelectedRectangleFillColor);
+                rectangle.style("fill-opacity", unSelectedFillOpacity);
+            } else {
+                // cell is unselected -> selected
+                // save off original rectangle fill color
+                var rectangle = d3.select(cell).select("rect.swatch")
+                var currentRectangleFillColor = rectangle.style("fill");
+                rectangle.attr("originalFillColor", currentRectangleFillColor);   
+                // update legend rectange fill color to original  and state to false
+                cell.setAttribute('selected', "true");
+                rectangle.style("fill", selectedFillColor);
+                rectangle.style("fill-opacity", selectedFillOpacity);
+            }
+
+            // re-calculate death rate colors.
+            var states = svg.selectAll('.states')
+                .data(topojson.feature(usPersisted, usPersisted.objects.usStates).features);
+
+            //not expecting less states so not expecting this to do anything
+            // states.exit().remove();
+
+            // planning on skipping .enter() as not expecting any new states
+            // // udpate
+            states.merge(states)
+                .style("fill-opacity", function (d) {
+                    //console.log(d);
+                    // var name = d.properties.STATE_ABBR;
+                    // var result = aggDataPersisted.filter(function (obj) { return obj['State '] == name; });
+                    // var stats = getStateDeathRateV2(name, filterPath);
+                    // tempDeathRate = stats;
+                    // // ref: https://stackoverflow.com/questions/3363463/append-custom-attributes-to-a-dom-node
+                    // this.setAttribute('value', stats); // store copy of current calculate death stats in dom for retreival by legend code
+                    // var colorValue = colorScale(stats);
+
+                    //https://stackoverflow.com/questions/20340263/d3-retrieve-and-add-to-current-selections-attribute-value
+                    var currentFillOpacity = +d3.select(this).style("fill-opacity");
+                    var currentFillColor = d3.select(this).style("fill");
+
+                    // console.log(currentFillOpacity);
+                    var setFillOpacity = null;
+                    var currentDeathRateValue = +this.getAttribute('value')
+                    if(currentDeathRateValue >= lowerBound && currentDeathRateValue < upperBound) {
+                        if(currentFillOpacity == selectedFillOpacity) {
+                            // selected state -> unselected
+                            setFillOpacity = d3.select(this).style("fill-opacity", unSelectedFillOpacity);
+                            var unSelectedFillColor = d3.select(this).attr("originalFillColor");
+                            d3.select(this).style("fill", unSelectedFillColor);
+
+
+                        } else { // unselected state -> selected
+                            // selection detected, set selected opacity and fill
+                            setFillOpacity = d3.select(this).style("fill-opacity", selectedFillOpacity);
+                            
+                            // not currently selected
+                            // save original Fill Color
+                            d3.select(this).attr("originalFillColor", currentFillColor);
+                            // now set state to selected fill color
+                            d3.select(this).style("fill", selectedFillColor);
+
+                           
+                        }
+                    } else {
+                        setFillOpacity = currentFillOpacity;
+                    }
+                    
+                    // console.log(this.getAttribute('value'));
+                    return setFillOpacity;
+                })
+                ;
         }
 
         /*
@@ -711,7 +811,64 @@
         svg.select(".legendThreshold")
             .call(legendThreshold);
 
+        // attach legend handlers
+        d3.selectAll("g.cell")
+            //.attr("fill", function(d, i) {if (i == 0) return "blue"; if (i == 1) return "red"; return "green"})
+            .attr("selected", "false")
+            .on('click', null)
+            .on('click', function(d,i) {
+                // handle events here
+                // d - datum
+                // i - identifier or index
+                // this - the `<rect>` that was clicked
+                var selected = this.getAttribute('selected');
+                var textVal = d3.select(this).select("text.label").text();
+                var bounds = getBounds(textVal); // should return a 2 element array index 0 lower, index1 upper
+                var lowerBound = bounds[0];
+                var upperBound = bounds[1];
+                var rectangle = d3.select(this).select("rect.swatch");
+                toggleLegendState(lowerBound, upperBound, this);
+            })
+            ;
 
+        function unSelectAllStates() {
+            d3.selectAll("g.cell")
+            //.attr("fill", function(d, i) {if (i == 0) return "blue"; if (i == 1) return "red"; return "green"})
+            .attr("selected", function(d,i) {
+                // handle events here
+                // d - datum
+                // i - identifier or index
+                // this - the `<rect>` that was clicked
+                var selected = this.getAttribute('selected');
+                var textVal = d3.select(this).select("text.label").text();
+                var bounds = getBounds(textVal); // should return a 2 element array index 0 lower, index1 upper
+                var lowerBound = bounds[0];
+                var upperBound = bounds[1];
+                // console.log(bounds);
+                if(selected == "true") {
+
+                    toggleLegendState(lowerBound, upperBound, this);
+                } 
+                
+                return "false";
+            })
+            ;
+        }
+
+        function getBounds(parseText) {
+            var str = parseText.split(" ");
+            // https://stackoverflow.com/questions/1352577/check-that-variable-is-a-number
+            var lower = +str[0];
+            var val1 = +str[1];
+            var upper = +str[2];
+            if(isFinite(+lower) == true && isFinite(+upper) == true) {
+                return [lower, upper];
+            } else if (str[0] === "Less") {
+                return [0, upper];
+            } else {
+                return [upper, 100];
+            }
+        }
         // end append legend
 
         function getStatePrevalence(state, impairedData) {
