@@ -131,6 +131,7 @@
         *   visualized death rates for age groups as well as gender.
         *   Histogram -> http://bl.ocks.org/jensgrubert/7777399
         *   added legend key state selection fill/unfill
+        *   Added initial transition of States to assemble like jig saw puzzle from random points away from center upon refersh of page.
 		*/
         var w = 960,
             h = 700,
@@ -249,19 +250,15 @@
                             .data(topojson.feature(us, us.objects.usStates).features)
                             .enter()
                             .append('path')
+
                             .attr("class", "states")
+
+                            // .transition()
+                            //    .attr("transform", function (d, i) {
+                            //         return "translate(" + Math.random() * (-50) + "," + Math.random() * (-50) + ")" })
+                            //    .duration(3000)
+
                             .attr('d', path)
-                            .style("fill", function (d) {
-                                var name = d.properties.STATE_ABBR;
-                                var stats;
-                                if (deathRateFlag) {
-                                    stats = getStateDeathRate(name, deathRateData);
-                                } else {
-                                    stats = getStatePrevalence(name, prevalenceData);
-                                }
-                                var colorValue = colorScale(stats);
-                                return colorScale(stats); // <-D
-                            })
                             .on('mouseover', function (d) {
                                 svg.selectAll("incidents").remove();
                                 var name = d.properties.STATE_ABBR;
@@ -273,7 +270,36 @@
                                 return document.getElementById('name').innerHTML = name + ": </br>Prevalence: " + prevalence
                                     + "%</br>Death Rate: " + deathRate + "%";
                             })
-                            .on("click", clicked);
+                            .on("click", clicked)
+
+                           .style("fill", "none")
+                           .attr("transform", function (d, i) {
+                                // https://stackoverflow.com/questions/8611830/javascript-random-positive-or-negative-number
+                                var plusOrMinus1 = Math.random() < 0.5 ? -1 : 1;
+                                var plusOrMinus2 = Math.random() < 0.5 ? -1 : 1;
+                                var lh = 400;//h;
+                                var lw = 400;//w;
+                                return "translate(" + (plusOrMinus1 * d3.randomUniform(lh, lh + 200)()) + "," + (plusOrMinus2 * d3.randomUniform(lw, lw + 200)())  + ") rotate(" + d3.randomUniform(0, 360)() + ")" })
+
+                            .transition()
+                                .style("fill", function (d) {
+                                    var name = d.properties.STATE_ABBR;
+                                    var stats;
+                                    if (deathRateFlag) {
+                                        stats = getStateDeathRate(name, deathRateData);
+                                    } else {
+                                        stats = getStatePrevalence(name, prevalenceData);
+                                    }
+                                    var colorValue = colorScale(stats);
+                                    return colorScale(stats); // <-D
+                                })
+                                .attr("transform", function (d, i) {
+                                    return "translate(" +  (0) + "," +  (0) + ")" })
+                               .duration(3000)
+                            // .transition()
+                            //     .delay(3000)
+                            
+                            ;
                         updateButtonColors(d3.select("g.button.both"), d3.select("#allButtons"));
                     });
                 });
