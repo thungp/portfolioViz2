@@ -133,6 +133,7 @@
         *   added legend key state selection fill/unfill
         *   Added initial transition of States to assemble like jig saw puzzle from random points away from center upon refersh of page.
         *   Added button for year selection, initialzing 2012 button selected upon initial page load. (Note need to remove yearSlider)
+        *   Removed the year Slider bar and slipped in the year buttons in it's place.
 		*/
         var w = 960,
             h = 700,
@@ -148,7 +149,7 @@
 
         var yearSliderY = 585;
         var genderButtonsGroupY = 610;
-        var yearButtonsGroupY = 510;
+        var yearButtonsGroupY = 560;
         var ageRangeSliderY = 665;
 
         var threshold = [1, 3, 6, 9, 11];
@@ -443,46 +444,26 @@
 
 
 
-        // add  sliders Year and Age Range
+        // add   Age Range
         // var x = d3.scaleLinear()
         //var yearList = [2012, 2013, 2014, 2015, 2016];  // test for greater number of years
-        var yearList = [2012, 2014];
+
         var ageRangeList = ["All Ages", "Ages 0-20", "Ages 21-34", "Ages 35+"];
         var sliderBarPixelDomain = [0, 600];
 
-        var xYear = d3.scaleQuantile()
-            .domain(sliderBarPixelDomain)
-            .range(yearList);
-        //.clamp(true); // does not exist for d3.scaleQuantize
 
         var xAgeRange = d3.scaleQuantile()
             .domain(sliderBarPixelDomain)
             .range(ageRangeList);
         //.clamp(true); // does not exist for d3.scaleQuantize
 
-        var slider = svg.append("g")
-            .attr("class", "slider year")
-            .attr("transform", "translate(" + margin.left + "," + yearSliderY + ")");
+
 
         var sliderAgeRange = svg.append("g")
             .attr("class", "slider ageRange")
             .attr("transform", "translate(" + margin.left + "," + ageRangeSliderY + ")");
 
-        slider.append("line")
-            .attr("class", "track")
-            .attr("x1", xYear.domain()[0])
-            .attr("x2", xYear.domain()[1])
-            .select(function () { return this.parentNode.appendChild(this.cloneNode(true)); })
-            .attr("class", "track-inset")
-            .select(function () { return this.parentNode.appendChild(this.cloneNode(true)); })
-            .attr("class", "track-overlay")
-            .call(d3.drag()
-                .on("start.interrupt", function () { slider.interrupt(); })
-                .on("start drag", function () {
-                    year(d3.event.x); // so deathRateYear is updated while it is being dragged vice on dragended.  May have effect of updating choropleth as slider is being slid, if we had more than two years.
-                })
-                .on("end", dragendedYear)
-            );
+
 
         sliderAgeRange.append("line")
             .attr("class", "track")
@@ -502,18 +483,7 @@
             )
             ;
 
-        slider.insert("g", ".track-overlay")
-            .attr("class", "ticks")
-            .attr("transform", "translate(0," + 30 + ")") // controls how many pixels below bar
-            .selectAll("text")
-            .data(getTickArray(xYear))
-            .enter().append("text")
-            .attr("x", function (d) { return d; })
-            .attr("text-anchor", "middle")
-            .text(function (d) {
-                //console.log(xYear(d));
-                return xYear(d);
-            });
+
 
         sliderAgeRange.insert("g", ".track-overlay")
             .attr("class", "ticks")
@@ -528,31 +498,13 @@
                 return xAgeRange(d);
             });
 
-        var handleYear = slider.insert("circle", ".track-overlay")
-            .attr("class", "handle year")
-            .attr("r", 9);
+
 
         var handleAgeRange = sliderAgeRange.insert("circle", ".track-overlay")
             .attr("class", "handle ageRange")
             .attr("r", 9);
 
-        function year(xActual) {
-            // code below fixes the actual handle to snap to the tick marks
-            // for ranges that
-            var xExtent = xYear.invertExtent(xYear(xActual));
-            var xExtentLeft = xExtent[0];
-            var xExtentRight = xExtent[1];
-            var xExtentMid = (xExtentLeft + xExtentRight) / 2;
-            var xPixelLocation;
-            if (xExtentRight === xYear.domain()[1]) {
-                handleYear.attr("cx", xYear.domain()[1]);
-            } else if (xExtentLeft === xYear.domain()[0]) {
-                handleYear.attr("cx", xYear.domain()[0]);
-            } else {
-                handleYear.attr("cx", xExtentMid);
-            }
-            deathRateYear = xYear(xActual);
-        }
+
 
         function ageRange(xActual) {
             // code below fixes the actual handle to snap to the tick marks
@@ -572,10 +524,7 @@
             ageRangeSelected = xAgeRange(xActual);
         }
 
-        // drag handler functions
-        function dragendedYear(d) {
-            updateChoropleth("year");
-        }
+
 
         function dragendedAgeRange(d) {
             updateChoropleth("ageRange");
