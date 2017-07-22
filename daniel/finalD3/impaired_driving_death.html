@@ -164,6 +164,9 @@
         //fontawesome button labels
         var labels = ['\uf183', '\uf182', '\uf0c0'];
         var labelsId = ['Male', 'Female', 'Both'];
+        var yearLabels = ['2012', '2014'];
+        var yearData = [2012, 2014];
+
         var genderSelected = labelsId[2];  // default both
         //colors for different button states
         var defaultColor = "#7777BB"
@@ -300,7 +303,7 @@
                             //     .delay(3000)
                             
                             ;
-                        updateButtonColors(d3.select("g.button.both"), d3.select("#allButtons"));
+                        updateButtonColors(d3.select("g.button.both"), d3.select("#genderButtons"));
                     });
                 });
             });
@@ -747,13 +750,13 @@
         //     .attr("fill","#DAC99A")
 
 
-        //container for all buttons
-        var allButtons = svg.append("g")
-            .attr("id", "allButtons")
+        //container for gender buttons
+        var genderButtons = svg.append("g")
+            .attr("id", "genderButtons")
             .attr("transform", "translate(50, " + genderButtonsGroupY + ")");
 
         //text that the radio button will toggle
-        var number = allButtons.append("text")
+        var number = genderButtons.append("text")
             .attr("id", "numberToggle")
             .attr("x", 180)
             .attr("y", 30)
@@ -761,7 +764,7 @@
             .attr("font-size", 24)
         // .text("[click a button]")
         //groups for each button (which will hold a rect and text)
-        var buttonGroups = allButtons.selectAll("g.button")
+        var buttonGroups = genderButtons.selectAll("g.button")
             .data(labels)
             .enter()
             .append("g")
@@ -941,7 +944,7 @@
                     // path comes from ageRange
                     columnTitle = "ageRangeSelected" + ", " + deathRateYear;
                     // reset gender to both
-                    updateButtonColors(d3.select("g.button.both"), d3.select("#allButtons"));
+                    updateButtonColors(d3.select("g.button.both"), d3.select("#genderButtons"));
                 } else {
                     // filter path must be "year"
                     if (genderSelected === "Both") {
@@ -994,7 +997,7 @@
 </body>
 <script>
     // ensure both male and female are selected by default (add after body tag so Dom is completely loaded.)
-        //updateButtonColors(d3.select("g.button.both"), d3.select("#allButtons"));
+        //updateButtonColors(d3.select("g.button.both"), d3.select("#genderButtons"));
 
 </script>
 
