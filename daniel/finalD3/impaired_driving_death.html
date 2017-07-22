@@ -132,6 +132,7 @@
         *   Histogram -> http://bl.ocks.org/jensgrubert/7777399
         *   added legend key state selection fill/unfill
         *   Added initial transition of States to assemble like jig saw puzzle from random points away from center upon refersh of page.
+        *   Added button for year selection, initialzing 2012 button selected upon initial page load. (Note need to remove yearSlider)
 		*/
         var w = 960,
             h = 700,
@@ -147,6 +148,7 @@
 
         var yearSliderY = 585;
         var genderButtonsGroupY = 610;
+        var yearButtonsGroupY = 510;
         var ageRangeSliderY = 665;
 
         var threshold = [1, 3, 6, 9, 11];
@@ -162,10 +164,10 @@
 
         // Globals in support of Buttons
         //fontawesome button labels
-        var labels = ['\uf183', '\uf182', '\uf0c0'];
+        var labelsGender = ['\uf183', '\uf182', '\uf0c0'];
         var labelsId = ['Male', 'Female', 'Both'];
-        var yearLabels = ['2012', '2014'];
-        var yearData = [2012, 2014];
+        var labelsYear = ['2012', '2014'];
+        var labelsYearId = ['a_2012', 'a_2014'];
 
         var genderSelected = labelsId[2];  // default both
         //colors for different button states
@@ -754,6 +756,10 @@
         var genderButtons = svg.append("g")
             .attr("id", "genderButtons")
             .attr("transform", "translate(50, " + genderButtonsGroupY + ")");
+        //container for year buttons
+        var yearButtons = svg.append("g")
+            .attr("id", "yearButtons")
+            .attr("transform", "translate(50, " + yearButtonsGroupY + ")");            
 
         //text that the radio button will toggle
         var number = genderButtons.append("text")
@@ -763,13 +769,13 @@
             .attr("fill", "green")
             .attr("font-size", 24)
         // .text("[click a button]")
-        //groups for each button (which will hold a rect and text)
-        var buttonGroups = genderButtons.selectAll("g.button")
-            .data(labels)
+        //groups for each gender button (which will hold a rect and text)
+        var buttonGroups = genderButtons.selectAll("g.button.gender")
+            .data(labelsGender)
             .enter()
             .append("g")
-            .attr("class", "button")
-            .attr("class", function (d, i) { return "button " + labelsId[i] })
+            //.attr("class", "button")
+            .attr("class", function (d, i) { return "button gender " + labelsId[i] })
             .style("cursor", "pointer")
             .on("click", function (d, i) {
                 updateButtonColors(d3.select(this), d3.select(this.parentNode));
@@ -790,6 +796,32 @@
                 }
             })
 
+        //groups for each year button (which will hold a rect and text)
+        var yearGroups = yearButtons.selectAll("g.button.year")
+            .data(labelsYear)
+            .enter()
+            .append("g")
+            .attr("class", "button")
+            .attr("class", function (d, i) { return "button year " + labelsYearId[i] })
+            .style("cursor", "pointer")
+            .on("click", function (d, i) {
+                updateButtonColorsYear(d3.select(this), d3.select(this.parentNode));
+                // d3.select("#numberToggle").text(i+1)
+            })
+            .on("mouseover", function () {
+                if (d3.select(this).select("rect").attr("fill") != pressedColor) {
+                    d3.select(this)
+                        .select("rect")
+                        .attr("fill", hoverColor);
+                }
+            })
+            .on("mouseout", function () {
+                if (d3.select(this).select("rect").attr("fill") != pressedColor) {
+                    d3.select(this)
+                        .select("rect")
+                        .attr("fill", defaultColor);
+                }
+            })
 
         //adding a rect to each toggle button group
         //rx and ry give the rect rounded corner
@@ -802,9 +834,39 @@
             .attr("rx", 5) //rx and ry give the buttons rounded corners
             .attr("ry", 5)
             .attr("fill", defaultColor)
+
+        //rx and ry give the rect rounded corner
+        yearGroups.append("rect")
+            .attr("class", "buttonRect")
+            .attr("width", bWidth)
+            .attr("height", bHeight)
+            .attr("x", function (d, i) { return x0 + (bWidth + bSpace) * i; })
+            .attr("y", y0)
+            .attr("rx", 5) //rx and ry give the buttons rounded corners
+            .attr("ry", 5)
+            //.attr("fill", defaultColor)
+            .attr("fill", function(d, i) { 
+                if(i == 0) {
+                    return pressedColor; 
+                }
+                return defaultColor;
+            })            
         //adding text to each toggle button group, centered
         //within the toggle button rect
         buttonGroups.append("text")
+            .attr("class", "buttonText")
+            .attr("font-family", "FontAwesome")
+            .attr("x", function (d, i) {
+                return x0 + (bWidth + bSpace) * i + bWidth / 2;
+            })
+            .attr("y", y0 + bHeight / 2)
+            .attr("text-anchor", "middle")
+            .attr("dominant-baseline", "central")
+            .attr("fill", "white")
+            .text(function (d) { return d; })
+        //adding text to each toggle button group, centered
+        //within the toggle button rect
+        yearGroups.append("text")
             .attr("class", "buttonText")
             .attr("font-family", "FontAwesome")
             .attr("x", function (d, i) {
@@ -823,9 +885,23 @@
             button.select("rect")
                 .attr("fill", pressedColor)
             // one place to update visualization
-            genderSelected = button.attr("class").split(" ")[1]; // set global for which gender selected
+            genderSelected = button.attr("class").split(" ")[2]; // set global for which gender selected
             updateChoropleth("gender");
         }
+
+
+        function updateButtonColorsYear(button, parent) {
+            parent.selectAll("rect")
+                .attr("fill", defaultColor)
+
+            button.select("rect")
+                .attr("fill", pressedColor)
+            // one place to update visualization
+            tempDeathRateyear = button.attr("class").split(" ")[2]; // set global for which year selected
+            deathRateYear = +tempDeathRateyear.split("_")[1]; // set global for which year selected
+            updateChoropleth("year");
+        }
+
         // append legend Threshold
         svg.append("g")
             .attr("class", "legendThreshold")
