@@ -82,16 +82,14 @@
         }
         /* Bar Chart */
 
-        .bar {
-        }
-
-        .bar:hover {
+        .bar {}
+        /* .bar:hover {
             fill: lightskyblue;
         }
 
         .bar.active {
             fill: lightseagreen
-        }
+        } */
 
         .axis {
             font: 10px arial;
@@ -138,8 +136,9 @@
         var w = 960,
             h = 700,
             active = d3.select(null),
-            deathRateFlag = true;
-        var deathRateYear = 2012;
+            deathRateFlag = true,
+            deathRateYear = 2012,
+            rawDataFlag = true;
 
         var ageRangeSelected = "All Ages"; // e.g. All Ages, Ages 0-20, Ages 21-34, Ages 35+
         var aggDataPersisted;
@@ -223,22 +222,6 @@
             .scale(1000)
             .translate([w / 2, h / 2]);
 
-        function getStatePrevalence(state, impairedData) {
-            for (var i = 0; i < impairedData.length; i++) {
-                if (state == impairedData[i].State) {
-                    return impairedData[i]["Prevalence"];
-                }
-            }
-        }
-
-        function getStateDeathRate(state, impairedData) {
-            for (var i = 0; i < impairedData.length; i++) {
-                if (state == impairedData[i].State) {
-                    return impairedData[i]["Impaired Driving Death Rate"];
-                }
-            }
-        }
-
         d3.csv("data/impaired-driving-prevalence-2012-all-states.csv", function (error, prevalenceData) {
             if (error) return console.warn(error);
             prevalenceDataPersisted = prevalenceData;
@@ -273,38 +256,42 @@
                                 if (!prevalence) prevalence = 0;
                                 if (!deathRate) deathRate = 0;
 
-                                return document.getElementById('name').innerHTML = name + ": </br>Prevalence: " + prevalence
-                                    + "%</br>Death Rate: " + deathRate + "%";
+                                var deathInfo = "Death" + (rawDataFlag ? "s: " : " Rate: ") + deathRate + (rawDataFlag ? '' : '%')
+                                var stateInfo = name + ": </br>Prevalence: " + prevalence + "%</br>" + deathInfo;
+                                return document.getElementById('name').innerHTML = stateInfo;
                             })
                             .on("click", clicked)
 
-                           .style("fill", "none")
-                           .attr("transform", function (d, i) {
+                            .style("fill", "none")
+                            .attr("transform", function (d, i) {
                                 // https://stackoverflow.com/questions/8611830/javascript-random-positive-or-negative-number
                                 var plusOrMinus1 = Math.random() < 0.5 ? -1 : 1;
                                 var plusOrMinus2 = Math.random() < 0.5 ? -1 : 1;
                                 var lh = 400;//h;
                                 var lw = 400;//w;
-                                return "translate(" + (plusOrMinus1 * d3.randomUniform(lh, lh + 200)()) + "," + (plusOrMinus2 * d3.randomUniform(lw, lw + 200)())  + ") rotate(" + d3.randomUniform(0, 360)() + ")" })
+                                return "translate(" + (plusOrMinus1 * d3.randomUniform(lh, lh + 200)()) + "," +
+                                    (plusOrMinus2 * d3.randomUniform(lw, lw + 200)()) + ") rotate(" + d3.randomUniform(0, 360)() + ")"
+                            })
 
                             .transition()
-                                .style("fill", function (d) {
-                                    var name = d.properties.STATE_ABBR;
-                                    var stats;
-                                    if (deathRateFlag) {
-                                        stats = getStateDeathRate(name, deathRateData);
-                                    } else {
-                                        stats = getStatePrevalence(name, prevalenceData);
-                                    }
-                                    var colorValue = colorScale(stats);
-                                    return colorScale(stats); // <-D
-                                })
-                                .attr("transform", function (d, i) {
-                                    return "translate(" +  (0) + "," +  (0) + ")" })
-                               .duration(3000)
+                            .style("fill", function (d) {
+                                var name = d.properties.STATE_ABBR;
+                                var stats;
+                                if (deathRateFlag) {
+                                    stats = getStateDeathRate(name, deathRateData);
+                                } else {
+                                    stats = getStatePrevalence(name, prevalenceData);
+                                }
+                                var colorValue = colorScale(stats);
+                                return colorScale(stats); // <-D
+                            })
+                            .attr("transform", function (d, i) {
+                                return "translate(" + (0) + "," + (0) + ")"
+                            })
+                            .duration(3000)
                             // .transition()
                             //     .delay(3000)
-                            
+
                             ;
                         updateButtonColors(d3.select("g.button.both"), d3.select("#genderButtons"));
                     });
@@ -415,10 +402,10 @@
                 })
                 .attr("width", 100)
                 .attr("y", function (d) { return y(d.stats); })
-                .attr("height", function (d) {  return (400 - y(d.stats)); })
+                .attr("height", function (d) { return (400 - y(d.stats)); })
                 .attr("transform", "translate(20, -400)")
-                .attr("fill", function(d) {
-                    if(d.gender == "Female"){
+                .attr("fill", function (d) {
+                    if (d.gender == "Female") {
                         return "rgb(230, 180, 180)";
                     } else {
                         return "rgb(180, 230, 230)";
@@ -532,8 +519,8 @@
 
         function updateChoropleth(filterPath) {
             unSelectAllStates(); // to prevent unintended selection of states based on new data
-                                 // need to do this first, prior to changing states else 
-                                 // if states are selected, would be overiding previous state fill color
+            // need to do this first, prior to changing states else
+            // if states are selected, would be overiding previous state fill color
             // re-calculate death rate colors.
             var states = svg.selectAll('.states')
                 .data(topojson.feature(usPersisted, usPersisted.objects.usStates).features);
@@ -566,26 +553,27 @@
                     if (!prevalence) prevalence = 0;
                     if (!deathRate) deathRate = 0;
 
-                    return document.getElementById('name').innerHTML = name + ": </br>Prevalence: " + prevalence
-                        + "%</br>Death Rate: " + deathRate + "%";
+                    var deathInfo = "Death" + (rawDataFlag ? "s: " : " Rate: ") + deathRate + (rawDataFlag ? '' : '%')
+                    var stateInfo = name + ": </br>Prevalence: " + prevalence + "%</br>" + deathInfo;
+                    return document.getElementById('name').innerHTML = stateInfo;
                 })
                 .on("click", clicked);
-                
+
 
         }
 
         // outlineStateBasedOnDeathRateValue
         function toggleLegendState(lowerBound, upperBound, cell) {
 
-                            // console.log(bounds);
+            // console.log(bounds);
 
 
             // check for cell state
             var cellState = cell.getAttribute('selected');
-            if(cellState === "true") {
+            if (cellState === "true") {
                 // cell is selected -> unselected
                 // update legend rectange fill color to original  and cell state to false
-                
+
                 cell.setAttribute('selected', "false");
                 var rectangle = d3.select(cell).select("rect.swatch")
                 var unSelectedRectangleFillColor = rectangle.attr("originalFillColor");
@@ -596,7 +584,7 @@
                 // save off original rectangle fill color
                 var rectangle = d3.select(cell).select("rect.swatch")
                 var currentRectangleFillColor = rectangle.style("fill");
-                rectangle.attr("originalFillColor", currentRectangleFillColor);   
+                rectangle.attr("originalFillColor", currentRectangleFillColor);
                 // update legend rectange fill color to original  and state to false
                 cell.setAttribute('selected', "true");
                 rectangle.style("fill", selectedFillColor);
@@ -630,8 +618,8 @@
                     // console.log(currentFillOpacity);
                     var setFillOpacity = null;
                     var currentDeathRateValue = +this.getAttribute('value')
-                    if(currentDeathRateValue >= lowerBound && currentDeathRateValue < upperBound) {
-                        if(currentFillOpacity == selectedFillOpacity) {
+                    if (currentDeathRateValue >= lowerBound && currentDeathRateValue < upperBound) {
+                        if (currentFillOpacity == selectedFillOpacity) {
                             // selected state -> unselected
                             setFillOpacity = d3.select(this).style("fill-opacity", unSelectedFillOpacity);
                             var unSelectedFillColor = d3.select(this).attr("originalFillColor");
@@ -641,19 +629,19 @@
                         } else { // unselected state -> selected
                             // selection detected, set selected opacity and fill
                             setFillOpacity = d3.select(this).style("fill-opacity", selectedFillOpacity);
-                            
+
                             // not currently selected
                             // save original Fill Color
                             d3.select(this).attr("originalFillColor", currentFillColor);
                             // now set state to selected fill color
                             d3.select(this).style("fill", selectedFillColor);
 
-                           
+
                         }
                     } else {
                         setFillOpacity = currentFillOpacity;
                     }
-                    
+
                     // console.log(this.getAttribute('value'));
                     return setFillOpacity;
                 })
@@ -708,7 +696,7 @@
         //container for year buttons
         var yearButtons = svg.append("g")
             .attr("id", "yearButtons")
-            .attr("transform", "translate(50, " + yearButtonsGroupY + ")");            
+            .attr("transform", "translate(50, " + yearButtonsGroupY + ")");
 
         //text that the radio button will toggle
         var number = genderButtons.append("text")
@@ -794,12 +782,12 @@
             .attr("rx", 5) //rx and ry give the buttons rounded corners
             .attr("ry", 5)
             //.attr("fill", defaultColor)
-            .attr("fill", function(d, i) { 
-                if(i == 0) {
-                    return pressedColor; 
+            .attr("fill", function (d, i) {
+                if (i == 0) {
+                    return pressedColor;
                 }
                 return defaultColor;
-            })            
+            })
         //adding text to each toggle button group, centered
         //within the toggle button rect
         buttonGroups.append("text")
@@ -870,7 +858,7 @@
             //.attr("fill", function(d, i) {if (i == 0) return "blue"; if (i == 1) return "red"; return "green"})
             .attr("selected", "false")
             .on('click', null)
-            .on('click', function(d,i) {
+            .on('click', function (d, i) {
                 // handle events here
                 // d - datum
                 // i - identifier or index
@@ -887,26 +875,26 @@
 
         function unSelectAllStates() {
             d3.selectAll("g.cell")
-            //.attr("fill", function(d, i) {if (i == 0) return "blue"; if (i == 1) return "red"; return "green"})
-            .attr("selected", function(d,i) {
-                // handle events here
-                // d - datum
-                // i - identifier or index
-                // this - the `<rect>` that was clicked
-                var selected = this.getAttribute('selected');
-                var textVal = d3.select(this).select("text.label").text();
-                var bounds = getBounds(textVal); // should return a 2 element array index 0 lower, index1 upper
-                var lowerBound = bounds[0];
-                var upperBound = bounds[1];
-                // console.log(bounds);
-                if(selected == "true") {
+                //.attr("fill", function(d, i) {if (i == 0) return "blue"; if (i == 1) return "red"; return "green"})
+                .attr("selected", function (d, i) {
+                    // handle events here
+                    // d - datum
+                    // i - identifier or index
+                    // this - the `<rect>` that was clicked
+                    var selected = this.getAttribute('selected');
+                    var textVal = d3.select(this).select("text.label").text();
+                    var bounds = getBounds(textVal); // should return a 2 element array index 0 lower, index1 upper
+                    var lowerBound = bounds[0];
+                    var upperBound = bounds[1];
+                    // console.log(bounds);
+                    if (selected == "true") {
 
-                    toggleLegendState(lowerBound, upperBound, this);
-                } 
-                
-                return "false";
-            })
-            ;
+                        toggleLegendState(lowerBound, upperBound, this);
+                    }
+
+                    return "false";
+                })
+                ;
         }
 
         function getBounds(parseText) {
@@ -915,7 +903,7 @@
             var lower = +str[0];
             var val1 = +str[1];
             var upper = +str[2];
-            if(isFinite(+lower) == true && isFinite(+upper) == true) {
+            if (isFinite(+lower) == true && isFinite(+upper) == true) {
                 return [lower, upper];
             } else if (str[0] === "Less") {
                 return [0, upper];
@@ -941,6 +929,10 @@
             }
         }
 
+        function getStatePopulation(name, aggData) {
+            console.log("here");
+        }
+
         function getStateDeathRateV2(state, filterPath) {
             if (state === "Washington DC") {
                 state = "District of Columbia"; // fixes issue of state mismatch on DC
@@ -949,46 +941,47 @@
             var result = aggDataPersisted.filter(function (obj) { return obj['State '] == state; });
             var stats = 0;
             var columnTitle = "";
-            if (deathRateFlag) {
-                //console.log(filterPath);
-                // if filter path comes from gender.
-                if (filterPath === "gender") {
-                    // two cases
-                    // case 1: if gender is both, let ageRangeSelected pass on through tocolumn title
-                    if (genderSelected === "Both") {
-                        columnTitle = ageRangeSelected + ", " + deathRateYear;
-                    } else {
-                        // gender is either male or female, hence show either all Male/Female for particularyear
-                        columnTitle = genderSelected + ", " + deathRateYear;
-                        // reset ageRange to All Ages
-                        //*** TODO
-                        ageRange(0); // resetting ageRange handle to All Ages
-                    }
-
-                } else if (filterPath === "ageRange") {
-                    // path comes from ageRange
-                    columnTitle = "ageRangeSelected" + ", " + deathRateYear;
-                    // reset gender to both
-                    updateButtonColors(d3.select("g.button.both"), d3.select("#genderButtons"));
+            var populationTitle = "Population, " + deathRateYear;
+            var population = result[0][populationTitle];
+            //console.log(filterPath);
+            // if filter path comes from gender.
+            if (filterPath === "gender") {
+                // two cases
+                // case 1: if gender is both, let ageRangeSelected pass on through tocolumn title
+                if (genderSelected === "Both") {
+                    columnTitle = ageRangeSelected + ", " + deathRateYear;
                 } else {
-                    // filter path must be "year"
-                    if (genderSelected === "Both") {
-                        columnTitle = ageRangeSelected + ", " + deathRateYear;
-                    } else {
-                        // A gender must be selected
-                        columnTitle = genderSelected + ", " + deathRateYear;
-                    }
-
+                    // gender is either male or female, hence show either all Male/Female for particularyear
+                    columnTitle = genderSelected + ", " + deathRateYear;
+                    // reset ageRange to All Ages
+                    //*** TODO
+                    ageRange(0); // resetting ageRange handle to All Ages
                 }
 
-                if (result[0][columnTitle] === undefined) {
-                    stats = 0;
-                } else {
-                    stats = +result[0][columnTitle];
-                }
-
+            } else if (filterPath === "ageRange") {
+                // path comes from ageRange
+                columnTitle = "ageRangeSelected" + ", " + deathRateYear;
+                // reset gender to both
+                updateButtonColors(d3.select("g.button.both"), d3.select("#genderButtons"));
             } else {
-                stats = getStatePrevalence(name, prevalenceDataPersisted);
+                // filter path must be "year"
+                if (genderSelected === "Both") {
+                    columnTitle = ageRangeSelected + ", " + deathRateYear;
+                } else {
+                    // A gender must be selected
+                    columnTitle = genderSelected + ", " + deathRateYear;
+                }
+
+            }
+
+            if (result[0][columnTitle] === undefined) {
+                stats = 0;
+            } else {
+                stats = +result[0][columnTitle];
+            }
+
+            if (rawDataFlag) {
+                stats = Math.round(population / 100000 * stats);
             }
 
             return stats;
