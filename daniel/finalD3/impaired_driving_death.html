@@ -18,14 +18,16 @@
         }
 
         h1 {
-            font-family: arial;
+            font-family: FontAwesome;
             font-size: 1em;
             color: #333;
         }
 
         .title {
-            text-align: center;
-            font-family: arial;
+            position: absolute;
+            top: 0px;
+            left: 170px;
+            font-family: FontAwesome;
             font-size: 2em;
             color: #333;
         }
@@ -48,12 +50,13 @@
             cursor: pointer;
         }
 
-        .states.active {
-            fill: lightseagreen;
-        }
-
         .states:hover {
             fill: steelblue;
+        }
+
+        .states.active {
+            transition: transform 1s linear;
+            transform: translate(150, 550) rotateX(70deg);
         }
         /* slider styling */
 
@@ -82,14 +85,9 @@
         }
         /* Bar Chart */
 
-        .bar {}
-        /* .bar:hover {
-            fill: lightskyblue;
+        .bar {
+            box-shadow: -2px 5px 5px #999;
         }
-
-        .bar.active {
-            fill: lightseagreen
-        } */
 
         .axis {
             font: 10px arial;
@@ -138,7 +136,7 @@
             active = d3.select(null),
             deathRateFlag = true,
             deathRateYear = 2012,
-            rawDataFlag = true;
+            rawDataFlag = false;
 
         var ageRangeSelected = "All Ages"; // e.g. All Ages, Ages 0-20, Ages 21-34, Ages 35+
         var aggDataPersisted;
@@ -224,6 +222,44 @@
             .scale(1000)
             .translate([w / 2, h / 2]);
 
+        /* For the drop shadow filter... */
+        var defs = svg.append("defs");
+
+        var filter = defs.append("filter")
+            .attr("id", "dropshadow")
+
+        filter.append("feGaussianBlur")
+            .attr("in", "SourceAlpha")
+            .attr("stdDeviation", 4)
+            .attr("result", "blur");
+        filter.append("feOffset")
+            .attr("in", "blur")
+            .attr("dx", 2)
+            .attr("dy", 2)
+            .attr("result", "offsetBlur")
+        filter.append("feFlood")
+            .attr("in", "offsetBlur")
+            .attr("flood-color", "#999")
+            .attr("flood-opacity", "0.85")
+            .attr("result", "offsetColor");
+        filter.append("feComposite")
+            .attr("in", "offsetColor")
+            .attr("in2", "offsetBlur")
+            .attr("operator", "in")
+            .attr("result", "offsetBlur");
+
+        var feMerge = filter.append("feMerge");
+
+        feMerge.append("feMergeNode")
+            .attr("in", "offsetBlur")
+        feMerge.append("feMergeNode")
+            .attr("in", "SourceGraphic");
+
+        var blurFilter = defs.append("filter")
+            .attr("id", "blur")
+            .append("feGaussianBlur")
+            .attr("stdDeviation", 1);
+
         d3.csv("data/impaired-driving-prevalence-2012-all-states.csv", function (error, prevalenceData) {
             if (error) return console.warn(error);
             prevalenceDataPersisted = prevalenceData;
@@ -241,7 +277,6 @@
                             .data(topojson.feature(us, us.objects.usStates).features)
                             .enter()
                             .append('path')
-
                             .attr("class", "states")
 
                             // .transition()
@@ -262,6 +297,7 @@
                                 var stateInfo = name + ": </br>Prevalence: " + prevalence + "%</br>" + deathInfo;
                                 return document.getElementById('name').innerHTML = stateInfo;
                             })
+                            .attr("filter", "url(#dropshadow)")
                             .on("click", clicked)
 
                             .style("fill", "none")
@@ -317,13 +353,14 @@
                 dy = bounds[1][1] - bounds[0][1],
                 x = (bounds[0][0] + bounds[1][0]) / 2,
                 y = (bounds[0][1] + bounds[1][1]) / 2,
-                scale = .8 / Math.max(dx / w, dy / h),
+                scale = .3 / Math.max(dx / w, dy / h),
                 translate = [w / 2 - scale * x, h / 2 - scale * y];
 
             g.transition()
                 .duration(750)
                 .style("stroke-width", 1.5 / scale + "px")
-                .attr("transform", "translate(" + translate + ")scale(" + scale + ")");
+                .attr("transform", "translate(" + translate + ")scale(" + scale + ")")
+                .attr("filter", "url(#blur)");
             g.append("rect")
                 .attr("x", "0")
                 .attr("y", "0")
@@ -335,6 +372,11 @@
         }
 
         function newBarChart(data) {
+
+            d3.selectAll(".states")
+                .classed("active", true);
+
+
             chart.selectAll("g").remove()
             chart.selectAll("rect").remove();
 
@@ -373,6 +415,18 @@
             y.domain([0, yMax])
                 .range([400, 0]);
 
+            // chart.append("g")
+            //     .attr("class", "shadow")
+            //     .append("rect")
+            //     .attr("width", w * 0.9)
+            //     .attr("height", h * 0.7)
+            //     .attr("x", -100) // w * 0.05)
+            //     .attr("y", -450) // h * 0.05)
+            //     .attr("fill-opacity", 0.4)
+            //     .attr("fill", "#999")
+
+
+
             chart.append("g")
                 .attr("class", "x axis")
                 .call(xAxis)
@@ -406,24 +460,31 @@
                 .attr("y", function (d) { return y(d.stats); })
                 .attr("height", function (d) { return (400 - y(d.stats)); })
                 .attr("transform", "translate(20, -400)")
+                .attr("stroke", "1px")
                 .attr("fill", function (d) {
                     if (d.gender == "Female") {
-                        return "rgb(230, 180, 180)";
+                        return "rgb(255, 180, 180)";
                     } else {
-                        return "rgb(180, 230, 230)";
+                        return "rgb(180, 230, 255)";
                     }
-                });
+                })
+                .attr("filter", "url(#dropshadow)");
         }
 
         function reset() {
             chart.selectAll("g").remove();
             chart.selectAll("rect").remove();
             active.classed("active", false);
+
+            d3.selectAll(".states")
+                .classed("active", false);
+
             active = d3.select(null);
             g.transition()
                 .duration(750)
                 .style("stroke-width", "1.5px")
-                .attr("transform", "");
+                .attr("transform", "")
+                .attr("filter", "");
 
         }
 
@@ -860,7 +921,7 @@
             //.attr("fill", defaultColor)
             .attr("fill", function (d, i) {
                 if (i == 0) {
-                    return pressedColor;
+                    return defaultColor;
                 }
                 return defaultColor;
             })
@@ -902,13 +963,14 @@
         }
 
         function updateButtonColorsRaw(button, parent) {
+            rawDataFlag = !rawDataFlag;
             parent.selectAll("rect")
                 .attr("fill", defaultColor)
 
             button.select("rect")
-                .attr("fill", pressedColor)
+                .attr("fill", (rawDataFlag ? pressedColor : defaultColor))
             // one place to update visualization
-            rawDataFlag = !rawDataFlag;
+
 
             threshold = (rawDataFlag ? [50, 100, 250, 500, 1000] : [1, 3, 6, 9, 11]);
             colorScale = d3.scaleThreshold()
