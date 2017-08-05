@@ -223,6 +223,34 @@
             .scale(1000)
             .translate([w / 2, h / 2]);
 
+    // Machine Learning Utility functions
+    // refeerence: http://trentrichardson.com/2010/04/06/compute-linear-regressions-in-javascript/
+        function linearRegression(y,x){
+            var lr = {};
+            var n = y.length;
+            var sum_x = 0;
+            var sum_y = 0;
+            var sum_xy = 0;
+            var sum_xx = 0;
+            var sum_yy = 0;
+            
+            for (var i = 0; i < y.length; i++) {
+                
+                sum_x += x[i];
+                sum_y += y[i];
+                sum_xy += (x[i]*y[i]);
+                sum_xx += (x[i]*x[i]);
+                sum_yy += (y[i]*y[i]);
+            } 
+            
+            lr['slope'] = (n * sum_xy - sum_x * sum_y) / (n*sum_xx - sum_x * sum_x);
+            lr['intercept'] = (sum_y - lr.slope * sum_x)/n;
+            lr['r2'] = Math.pow((n*sum_xy - sum_x*sum_y)/Math.sqrt((n*sum_xx-sum_x*sum_x)*(n*sum_yy-sum_y*sum_y)),2);
+            lr['fn'] = function (x) { return this.slope * x + this.intercept; };
+            
+            return lr;
+        }   
+
         /* For the drop shadow and blur filters
            https://stackoverflow.com/a/17373466/4897795
          */
@@ -274,6 +302,8 @@
                 d3.csv("data/Impaired_Driving_Death_Rate.csv", function (error, aggData) {
                     aggDataPersisted = aggData;
                     if (error) return console.warn(error);
+                    regressData(aggDataPersisted);
+
                     d3.json("data/us.json", function (error, us) {
                         if (error) throw error;
                         usPersisted = us;
@@ -1179,6 +1209,86 @@
                                 || (cache[key] = key.slice(8, -1).toLowerCase()); // get XXXX from [object XXXX], and cache it
             };
         }(this));
+
+        // Utility Functions
+        // Reference: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/round
+        // Closure
+        (function() {
+          /**
+           * Decimal adjustment of a number.
+           *
+           * @param {String}  type  The type of adjustment.
+           * @param {Number}  value The number.
+           * @param {Integer} exp   The exponent (the 10 logarithm of the adjustment base).
+           * @returns {Number} The adjusted value.
+           */
+          function decimalAdjust(type, value, exp) {
+            // If the exp is undefined or zero...
+            if (typeof exp === 'undefined' || +exp === 0) {
+              return Math[type](value);
+            }
+            value = +value;
+            exp = +exp;
+            // If the value is not a number or the exp is not an integer...
+            if (isNaN(value) || !(typeof exp === 'number' && exp % 1 === 0)) {
+              return NaN;
+            }
+            // If the value is negative...
+            if (value < 0) {
+              return -decimalAdjust(type, -value, exp);
+            }
+            // Shift
+            value = value.toString().split('e');
+            value = Math[type](+(value[0] + 'e' + (value[1] ? (+value[1] - exp) : -exp)));
+            // Shift back
+            value = value.toString().split('e');
+            return +(value[0] + 'e' + (value[1] ? (+value[1] + exp) : exp));
+          }
+
+          // Decimal round
+          if (!Math.round10) {
+            Math.round10 = function(value, exp) {
+              return decimalAdjust('round', value, exp);
+            };
+          }
+          // Decimal floor
+          if (!Math.floor10) {
+            Math.floor10 = function(value, exp) {
+              return decimalAdjust('floor', value, exp);
+            };
+          }
+          // Decimal ceil
+          if (!Math.ceil10) {
+            Math.ceil10 = function(value, exp) {
+              return decimalAdjust('ceil', value, exp);
+            };
+          }
+        })();
+
+        function regressData(aggDataPersisted) {
+            var yearChoices = [2012, 2014];
+            var categoryChoices = ["Ages 0-20", "Ages 21-34", "Ages 35+", "All Ages", "Female", "Male"];
+            var index;
+            for(index = 0, len = aggDataPersisted.length; index < len; ++index ){ //52 states
+                for(index1 = 0, len1 = categoryChoices.length; index1 < len1; ++index1){
+                    var known_x = [];
+                    var known_y = []
+                    for(index2 = 0, len2 = yearChoices.length; index2 < len2; ++index2){
+                        known_x.push(index2);
+                        var year = yearChoices[index2];
+                        var value = +aggDataPersisted[index][categoryChoices[index1] + ", " + yearChoices[index2]];
+                        known_y.push(value);
+
+                    }
+                    var lr  = linearRegression(known_y, known_x);
+                    // could eventually create  loop to predict and set more than 1 year
+                    var newY = lr.fn(2);
+                    aggDataPersisted[index][categoryChoices[index1] + ", " + 2016] = newY;
+
+                }            
+            }
+
+        }
     </script>
 
 </body>
