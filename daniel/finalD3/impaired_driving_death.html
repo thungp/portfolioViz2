@@ -165,8 +165,8 @@
         //fontawesome button labels
         var labelsGender = ['\uf183', '\uf182', '\uf0c0'];
         var labelsId = ['Male', 'Female', 'Both'];
-        var labelsYear = ['2012', '2014'];
-        var labelsYearId = ['a_2012', 'a_2014'];
+        var labelsYear = ['2012', '2014', '2016'];
+        var labelsYearId = ['a_2012', 'a_2014', 'a_2016'];
         var labelsRawData = ["Raw"];
         var labelsRawDataID = ["raw"];
 
@@ -184,7 +184,7 @@
         // end globals in support of buttons
 
         // BarChart
-        var x = d3.scaleBand().domain(["Female 2012", "Male 2012", "Female 2014", "Male 2014"])
+        var x = d3.scaleBand().domain(["Female 2012", "Male 2012", "Female 2014", "Male 2014", "Female 2016", "Male 2016"])
             .range([0, 650])
             .paddingOuter(0.1);
         var y = d3.scaleLinear();
@@ -1267,7 +1267,7 @@
 
         function regressData(aggDataPersisted) {
             var yearChoices = [2012, 2014];
-            var categoryChoices = ["Ages 0-20", "Ages 21-34", "Ages 35+", "All Ages", "Female", "Male"];
+            var categoryChoices = ["Ages 0-20", "Ages 21-34", "Ages 35+", "All Ages", "Female", "Male", "Population"];
             var index;
             for(index = 0, len = aggDataPersisted.length; index < len; ++index ){ //52 states
                 for(index1 = 0, len1 = categoryChoices.length; index1 < len1; ++index1){
@@ -1283,7 +1283,7 @@
                     var lr  = linearRegression(known_y, known_x);
                     // could eventually create  loop to predict and set more than 1 year
                     var newY = lr.fn(2);
-                    aggDataPersisted[index][categoryChoices[index1] + ", " + 2016] = newY;
+                    aggDataPersisted[index][categoryChoices[index1] + ", " + 2016] = newY.toString();
 
                 }            
             }
