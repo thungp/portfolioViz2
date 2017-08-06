@@ -1282,7 +1282,7 @@
                     }
                     var lr  = linearRegression(known_y, known_x);
                     // could eventually create  loop to predict and set more than 1 year
-                    var newY = lr.fn(2);
+                    var newY = Math.round10(lr.fn(2), -1);
                     aggDataPersisted[index][categoryChoices[index1] + ", " + 2016] = newY.toString();
 
                 }            
