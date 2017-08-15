@@ -53,12 +53,12 @@
         .states:hover {
             fill: steelblue;
         }
-        /*
-        .states.active {
+
+        /* .states.active {
             transition: transform 1s linear;
             transform: translateY(300px) rotateX(70deg);
-        }
-        */
+        } */
+
         /* slider styling */
 
         .track {
@@ -235,23 +235,23 @@
             var sum_xy = 0;
             var sum_xx = 0;
             var sum_yy = 0;
-            
+
             for (var i = 0; i < y.length; i++) {
-                
+
                 sum_x += x[i];
                 sum_y += y[i];
                 sum_xy += (x[i]*y[i]);
                 sum_xx += (x[i]*x[i]);
                 sum_yy += (y[i]*y[i]);
-            } 
-            
+            }
+
             lr['slope'] = (n * sum_xy - sum_x * sum_y) / (n*sum_xx - sum_x * sum_x);
             lr['intercept'] = (sum_y - lr.slope * sum_x)/n;
             lr['r2'] = Math.pow((n*sum_xy - sum_x*sum_y)/Math.sqrt((n*sum_xx-sum_x*sum_x)*(n*sum_yy-sum_y*sum_y)),2);
             lr['fn'] = function (x) { return this.slope * x + this.intercept; };
-            
+
             return lr;
-        }   
+        }
 
         /* For the drop shadow and blur filters
            https://stackoverflow.com/a/17373466/4897795
@@ -273,7 +273,7 @@
         filter.append("feFlood")
             .attr("in", "offsetBlur")
             .attr("flood-color", "#aaa")
-            .attr("flood-opacity", "0.75")
+            .attr("flood-opacity", "0.6")
             .attr("result", "offsetColor");
         filter.append("feComposite")
             .attr("in", "offsetColor")
@@ -291,7 +291,7 @@
         var blurFilter = defs.append("filter")
             .attr("id", "blur")
             .append("feGaussianBlur")
-            .attr("stdDeviation", 1.5);
+            .attr("stdDeviation", 1.15);
 
         /* End filters */
 
@@ -379,6 +379,7 @@
             .attr("transform", "translate(150, 550)");
 
         function clicked(d) {
+            updateChoropleth("All");
             if (active.node() === this) {
                 return reset()
             }
@@ -390,9 +391,9 @@
                 dy = bounds[1][1] - bounds[0][1],
                 x = (bounds[0][0] + bounds[1][0]) / 2,
                 y = (bounds[0][1] + bounds[1][1]) / 2,
-                scale = .6 / Math.max(dx / w, dy / h),
+                scale = .95 / Math.max(dx / w, dy / h),
                 translate = [w / 2 - scale * x, h / 2 - scale * y];
-
+            active.style("fill", "grey");
             g.transition()
                 .duration(750)
                 .style("stroke-width", 1.5 / scale + "px")
@@ -421,7 +422,7 @@
             var tmpAge = ageRangeSelected;
             var tmpYear = deathRateYear;
             var gender = ["Female", "Male"];
-            var year = ["2012", "2014"];
+            var year = ["2012", "2014", "2016"];
             var results = [];
             var name;
 
@@ -510,9 +511,9 @@
             g.transition()
                 .duration(750)
                 .style("stroke-width", "1.5px")
+
                 .attr("transform", "")
                 .attr("filter", "");
-
         }
 
         // add D3 Radio Buttons to represent Male/Female/Both selections to access those particular
@@ -855,7 +856,7 @@
                         // .attr("fill", defaultColor);
                         .attr("fill", function (d, i) {
                                 //console.log(d + " "+ i);
-                                var colorToSet = defaultColor; 
+                                var colorToSet = defaultColor;
                                 if (d >= predictedYearStart) {
                                     colorToSet = predictedColor;
                                 } else {
@@ -892,7 +893,7 @@
             //.attr("fill", defaultColor)
             .attr("fill", function (d, i) {
                 //console.log(d + i);
-                var colorToSet = defaultColor; 
+                var colorToSet = defaultColor;
                 if (i == 0) {
                     colorToSet = pressedColor;
                     return pressedColor;
@@ -902,7 +903,7 @@
 
                 if (d >= predictedYearStart) { // 2016 currently hard coded to first predicted year.
                     colorToSet = predictedColor;
-                } 
+                }
 
                 return colorToSet;
             })
@@ -1001,11 +1002,11 @@
 
         function updateButtonColorsYear(button, parent) {
             // parent.selectAll("rect")
-            //     .attr("fill", defaultColor)           
+            //     .attr("fill", defaultColor)
             parent.selectAll("rect")
                 .attr("fill", function (d, i) {
                 console.log(d + i);
-                var colorToSet = defaultColor; 
+                var colorToSet = defaultColor;
 
                 if (d >= predictedYearStart) { // 2016 currently hard coded to first predicted year.
                     colorToSet = predictedColor;
@@ -1322,7 +1323,7 @@
                     var newY = Math.round10(lr.fn(2), -1);
                     aggDataPersisted[index][categoryChoices[index1] + ", " + 2016] = newY.toString();
 
-                }            
+                }
             }
 
         }
